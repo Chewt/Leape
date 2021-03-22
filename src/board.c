@@ -1,5 +1,7 @@
 #include <string.h>
+#include <stdio.h>
 #include "board.h"
+#include "io.h"
 
 void set_default(Board* board)
 {
@@ -72,20 +74,64 @@ uint64_t gen_pawn_moves(Board* board, int color)
     return pawns;
 }
 
-uint64_t gen_bishop_moves(Board* board, int color)
+uint64_t gen_bishop_moves(Board* board, uint64_t pieces)
 {
-    uint64_t bishops;
-    if (color == WHITE)
-        bishops = board->white[BISHOP];
-    else
-        bishops = board->black[BISHOP];
+    uint64_t moves = 0;
+    uint64_t friends = 0;
     int i;
-    for (i = 0; i < 7; ++i)
+    for (i = 0; i < 6; ++i)
     {
-        bishops |= bishops >> 7;
-        bishops |= bishops >> 9;
-        bishops |= bishops << 7;
-        bishops |= bishops << 9;
+        friends |= board->white[i];
+        friends |= board->black[i];
     }
-    return bishops;
+    for (i = 0; i < 8; ++i)
+    {
+        uint64_t row = 0xFFULL << 8 * i;
+        moves |= (pieces >> 7 * i) & row;
+        moves |= (pieces >> 9 * i) & row;
+        moves |= (pieces << 7 * i) & row;
+        moves |= (pieces << 9 * i) & row;
+    }
+    friends = ~friends;
+    moves &= friends;
+    return moves;
+}
+
+uint64_t gen_rook_moves(Board* board, uint64_t pieces)
+{
+    uint64_t moves = 0;
+    uint64_t friends = 0;
+    int i;
+    for (i = 0; i < 6; ++i)
+    {
+        friends |= board->white[i];
+        friends |= board->black[i];
+    }
+    for (i = 0; i < 8; ++i)
+    {
+        uint64_t row = 0xFFULL << 8 * i;
+        if (pieces & row)
+            moves |= row;
+        moves |= pieces >> 8 * i;
+        moves |= pieces << 8 * i;
+    }
+    friends = ~friends;
+    moves &= friends;
+    return moves;
+}
+
+uint64_t gen_queen_moves(Board* board, int color)
+{
+    uint64_t moves = 0;
+    if (color == WHITE)
+    {
+        moves |= gen_rook_moves(board, board->white[QUEEN]);
+        moves |= gen_bishop_moves(board, board->white[BISHOP]);
+    }
+    else
+    {
+        moves |= gen_rook_moves(board, board->black[QUEEN]);
+        moves |= gen_bishop_moves(board, board->black[BISHOP]);
+    }
+    return moves;
 }
