@@ -34,13 +34,22 @@ typedef struct
     int piece;
     int color;
 } Move;
+
+extern const uint64_t RDIAG;
+extern const uint64_t RDIAG;
+extern const uint64_t LDIAG;
+extern const uint64_t VERT;
+extern const uint64_t HORZ;
+extern const uint64_t NMOV;
+extern const uint64_t KMOV;
  
 void set_default(Board* board);
 void move_piece(Board* board, Move* move);
 void undo_move(Board* board, Move* move);
 
-uint64_t gen_pawn_moves(Board* board, int color);
-uint64_t gen_bishop_moves(Board* board, uint64_t pieces);
-uint64_t gen_rook_moves(Board* board, uint64_t pieces);
-uint64_t gen_queen_moves(Board* board, int color);
+uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces);
+uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces);
+uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces);
+uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces);
+uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces);
 #endif
