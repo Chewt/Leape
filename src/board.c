@@ -9,6 +9,7 @@ const uint64_t VERT  = 0x0101010101010101;
 const uint64_t HORZ  = 0x00000000000000FF;
 const uint64_t NMOV  = 0x0000000A1100110A;
 const uint64_t KMOV  = 0x0000000000070507;
+const uint64_t PATTK = 0x0000000000050005;
 
 /* Table used for determining bit index */
 const int index64[64] = {
@@ -95,6 +96,7 @@ void set_default(Board* board)
     board->black[KING]   = 0x0800000000000000;
     board->castle        = 0x2200000000000022;
     board->en_p          = 0x0000000000000000;
+    update_combined_pos(board);
 }
 
 uint64_t gen_shift(uint64_t src, int count)
@@ -119,6 +121,7 @@ void move_piece(Board* board, Move* move)
         board->black[move->piece] ^= move->src;
         board->black[move->piece] ^= move->dest;
     }
+    update_combined_pos(board);
 }
 
 /* Exactly the same as move_piece */
@@ -134,25 +137,52 @@ void undo_move(Board* board, Move* move)
         board->black[move->piece] ^= move->src;
         board->black[move->piece] ^= move->dest;
     }
-
+    update_combined_pos(board);
 }
 
 uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t pawns = pieces;
-        if (pawns < 0x000000000100 || pawns > 0x00FF00000000)
-            return 0;
+    uint64_t moves = 0ULL;
+    uint64_t friends = 0;
+    uint64_t enemies = 0;
     if (color == WHITE)
     {
-        pawns <<= 8;
-        pawns &= 0xFFFFFFFFFF00;
+        friends = board->all_white;
+        enemies = board->all_black;
     }
     else
     {
-        pawns >>= 8;
-        pawns &= 0x00FFFFFFFFFF;
+        friends = board->all_black;
+        enemies = board->all_white;
     }
-    return pawns;
+    int i;
+    if (color == WHITE)
+        moves |= pieces << 8;
+    else
+        moves |= pieces >> 8;
+    moves &= ~(friends | enemies);
+
+    for (i = 0; i < 64; ++i)
+    {
+        if ((0x1ULL << i) & pieces)
+        {
+            uint64_t tmp = 0ULL;
+            tmp |= gen_shift(PATTK, i - 8 - 1);
+            tmp &= vert_mask((i % 8) + 2);
+            if ((i % 8) - 1 > 0)
+                tmp &= ~vert_mask((i % 8) - 1);
+            if (i / 8 < 7 && color == BLACK)
+                tmp &= ~gen_shift(~(0ULL), (i / 8 - 1) * 8);
+            if (i / 8 > 1 && color == WHITE)
+                tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 + 1) * 8);
+            tmp &= enemies | board->en_p;;
+            moves |= tmp;
+        }
+        if (pieces >> i == 1)
+            break;
+    }
+    moves &= ~friends;
+    return moves;
 }
 
 uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
@@ -160,20 +190,17 @@ uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
     uint64_t moves = 0;
     uint64_t friends = 0;
     uint64_t enemies = 0;
-    int i;
-    for (i = 0; i < 6; ++i)
+    if (color == WHITE)
     {
-        if (color == WHITE)
-        {
-            friends |= board->white[i];
-            enemies |= board->black[i];
-        }
-        else
-        {
-            friends |= board->black[i];
-            enemies |= board->white[i];
-        }
+        friends = board->all_white;
+        enemies = board->all_black;
     }
+    else
+    {
+        friends = board->all_black;
+        enemies = board->all_white;
+    }
+    int i;
     for (i = 0; i < 64; ++i)
     {
         if ((0x1ULL << i) & pieces)
@@ -233,6 +260,8 @@ uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
             if (i % 8 > 0)
                 moves |= tmp;
         }
+        if (pieces >> i == 1)
+            break;
     }
     return moves;
 }
@@ -242,20 +271,17 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
     uint64_t moves = 0;
     uint64_t friends = 0;
     uint64_t enemies = 0;
-    int i;
-    for (i = 0; i < 6; ++i)
+    if (color == WHITE)
     {
-        if (color == WHITE)
-        {
-            friends |= board->white[i];
-            enemies |= board->black[i];
-        }
-        else
-        {
-            friends |= board->black[i];
-            enemies |= board->white[i];
-        }
+        friends = board->all_white;
+        enemies = board->all_black;
     }
+    else
+    {
+        friends = board->all_black;
+        enemies = board->all_white;
+    }
+    int i;
     for (i = 0; i < 64; ++i)
     {
         if ((0x1ULL << i) & pieces)
@@ -312,6 +338,8 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
             tmp &= 0xFFULL << (i / 8) * 8;
             moves |= tmp;
         }
+        if (pieces >> i == 1)
+            break;
     }
     return moves;
 }
@@ -336,21 +364,11 @@ uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0ULL;
     uint64_t friends = 0;
-    uint64_t enemies = 0;
+    if (color == WHITE)
+        friends = board->all_white;
+    else
+        friends = board->all_black;
     int i;
-    for (i = 0; i < 6; ++i)
-    {
-        if (color == WHITE)
-        {
-            friends |= board->white[i];
-            enemies |= board->black[i];
-        }
-        else
-        {
-            friends |= board->black[i];
-            enemies |= board->white[i];
-        }
-    }
     for (i = 0; i < 64; ++i)
     {
         if ((0x1ULL << i) & pieces)
@@ -365,9 +383,95 @@ uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
             if (i / 8 > 2)
                 tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 - 2) * 8);
             moves |= tmp;
-            break;
         }
+        if (pieces >> i == 1)
+            break;
     }
     moves &= ~friends;
+    return moves;
+}
+
+uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
+{
+    uint64_t moves = 0ULL;
+    uint64_t friends = 0ULL;
+    if (color == WHITE)
+        friends = board->all_white;
+    else
+        friends = board->all_black;
+    int i;
+    for (i = 0; i < 64; ++i)
+    {
+        if ((0x1ULL << i) & pieces)
+        {
+            uint64_t tmp = 0x0ULL;
+            tmp |= gen_shift(KMOV, i - 8 - 1);
+            tmp &= vert_mask((i % 8) + 2);
+            if ((i % 8) - 1 > 0)
+                tmp &= ~vert_mask((i % 8) - 1);
+            if (i / 8 < 5)
+                tmp &= ~gen_shift(~(0ULL), (i / 8 + 2) * 8);
+            if (i / 8 > 1)
+                tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 - 1) * 8);
+            moves |= tmp;
+            if (i == 3 && color == WHITE)
+            {
+                if ((board->castle & 0x02ULL) && !(friends &
+                                0x06ULL))
+                    moves |= 0x02ULL;
+                if ((board->castle & 0x20ULL) && !(friends &
+                                0x68ULL))
+                    moves |= 0x20ULL;
+            }
+            else if (i == 59 && color == BLACK)
+            {
+                if ((board->castle & (0x02ULL << 7 * 8)) && 
+                        ((friends & (0x06ULL << 7 * 8)) == 0))
+                    moves |= 0x02ULL << 7 * 8;
+                if ((board->castle & (0x20ULL << 7 * 8)) && 
+                        ((friends & (0x68ULL << 7 * 8)) == 0))
+                    moves |= 0x20ULL << 7 * 8;
+            }
+        }
+        if (pieces >> i == 1)
+            break;
+    }
+    moves &= ~friends;
+    return moves;
+}
+
+void update_combined_pos(Board* board)
+{
+    int i;
+    board->all_white = 0x0ULL;
+    board->all_black = 0x0ULL;
+    for (i = 0; i < 6; ++i)
+    {
+        board->all_white |= board->white[i];
+        board->all_black |= board->black[i];
+    }
+}
+
+uint64_t gen_all_moves(Board* board, int color)
+{
+    uint64_t moves = 0x0ULL;
+    if (color == WHITE)
+    {
+        moves |= gen_pawn_moves(board, WHITE, board->white[PAWN]);
+        moves |= gen_bishop_moves(board, WHITE, board->white[BISHOP]);
+        moves |= gen_knight_moves(board, WHITE, board->white[KNIGHT]);
+        moves |= gen_rook_moves(board, WHITE, board->white[ROOK]);
+        moves |= gen_queen_moves(board, WHITE, board->white[QUEEN]);
+        moves |= gen_king_moves(board, WHITE, board->white[KING]);
+    }
+    else
+    {
+        moves |= gen_pawn_moves(board, BLACK, board->black[PAWN]);
+        moves |= gen_bishop_moves(board, BLACK, board->black[BISHOP]);
+        moves |= gen_knight_moves(board, BLACK, board->black[KNIGHT]);
+        moves |= gen_rook_moves(board, BLACK, board->black[ROOK]);
+        moves |= gen_queen_moves(board, BLACK, board->black[QUEEN]);
+        moves |= gen_king_moves(board, BLACK, board->black[KING]);
+    }
     return moves;
 }

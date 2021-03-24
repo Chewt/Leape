@@ -23,6 +23,8 @@ typedef struct
 {
     uint64_t white[6];
     uint64_t black[6];
+    uint64_t all_white;
+    uint64_t all_black;
     uint64_t en_p;
     uint64_t castle;
 } Board;
@@ -42,14 +44,18 @@ extern const uint64_t VERT;
 extern const uint64_t HORZ;
 extern const uint64_t NMOV;
 extern const uint64_t KMOV;
+extern const uint64_t PATTK;
  
 void set_default(Board* board);
 void move_piece(Board* board, Move* move);
 void undo_move(Board* board, Move* move);
+void update_combined_pos(Board* board);
 
 uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces);
+uint64_t gen_king_moves(Board* board, int color, uint64_t pieces);
+uint64_t gen_all_moves(Board* board, int color);
 #endif

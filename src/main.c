@@ -8,19 +8,13 @@ int main()
     Board board;
     set_default(&board);
     print_board(&board);
-    Board bboard;
     memset(&bboard, 0, sizeof(Board));
     //board.white[PAWN] = 0x00000000FF000000;
     int i;
-    for (i = 0; i < 64; ++i)
+    for (i = 0; i < 1000000; ++i)
     {
-        board.white[QUEEN] = 0x0000000000000001ULL << i;
-        //board.white[PAWN]  = 0x000081818181FF00;
-        bboard.white[QUEEN] = gen_queen_moves(&board, WHITE,
-                                                        board.white[QUEEN]);
-        printf("i = %d\n", i);
-        print_board(&bboard);
-
+        gen_all_moves(&board, WHITE);
+        gen_all_moves(&board, BLACK);
     }
     return 0;
 }

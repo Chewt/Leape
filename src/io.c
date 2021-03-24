@@ -7,7 +7,7 @@ void print_board(Board* board)
     int i;
     for (i = 1; i <= 64; ++i)
     {
-        uint64_t square = 0x1;
+        uint64_t square = 0x1ULL;
         square = square << (64 - i);
         if (board->white[PAWN] & square)
             printf("P");
