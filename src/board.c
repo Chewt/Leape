@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "board.h"
 #include "io.h"
 
@@ -82,20 +83,21 @@ uint64_t vert_mask(int count)
 void set_default(Board* board)
 {
     memset(board, 0, sizeof(Board));
-    board->white[PAWN]   = 0x000000000000FF00;
-    board->white[BISHOP] = 0x0000000000000024;
-    board->white[KNIGHT] = 0x0000000000000042;
-    board->white[ROOK]   = 0x0000000000000081;
-    board->white[QUEEN]  = 0x0000000000000010;
-    board->white[KING]   = 0x0000000000000008;
-    board->black[PAWN]   = 0x00FF000000000000;
-    board->black[BISHOP] = 0x2400000000000000;
-    board->black[KNIGHT] = 0x4200000000000000;
-    board->black[ROOK]   = 0x8100000000000000;
-    board->black[QUEEN]  = 0x1000000000000000;
-    board->black[KING]   = 0x0800000000000000;
-    board->castle        = 0x2200000000000022;
-    board->en_p          = 0x0000000000000000;
+    board->pieces[WHITE + PAWN]   = 0x000000000000FF00;
+    board->pieces[WHITE + BISHOP] = 0x0000000000000024;
+    board->pieces[WHITE + KNIGHT] = 0x0000000000000042;
+    board->pieces[WHITE + ROOK]   = 0x0000000000000081;
+    board->pieces[WHITE + QUEEN]  = 0x0000000000000010;
+    board->pieces[WHITE + KING]   = 0x0000000000000008;
+    board->pieces[BLACK + PAWN]   = 0x00FF000000000000;
+    board->pieces[BLACK + BISHOP] = 0x2400000000000000;
+    board->pieces[BLACK + KNIGHT] = 0x4200000000000000;
+    board->pieces[BLACK + ROOK]   = 0x8100000000000000;
+    board->pieces[BLACK + QUEEN]  = 0x1000000000000000;
+    board->pieces[BLACK + KING]   = 0x0800000000000000;
+    board->castle                 = 0x2200000000000022;
+    board->en_p                   = 0x0000000000000000;
+    board->to_move                = WHITE;
     update_combined_pos(board);
 }
 
@@ -109,34 +111,39 @@ uint64_t gen_shift(uint64_t src, int count)
         return src << count;
 }
 
-void move_piece(Board* board, Move* move)
+int comp_cand(const void* one, const void* two)
 {
-    if (move->color == WHITE)
-    {
-        board->white[move->piece] ^= move->src;
-        board->white[move->piece] ^= move->dest;
-    }
-    else
-    {
-        board->black[move->piece] ^= move->src;
-        board->black[move->piece] ^= move->dest;
-    }
-    update_combined_pos(board);
+    if (((Cand*)one)->weight > ((Cand*)two)->weight)
+        return -1;
+    else if (((Cand*)one)->weight < ((Cand*)two)->weight)
+        return 1;
+    return 0;
 }
 
-/* Exactly the same as move_piece */
-void undo_move(Board* board, Move* move)
+void move_piece(Board* board, Move* move)
 {
-    if (move->color == WHITE)
+    int i;
+    for (i = 0; i < 12; ++i)
+        board->pieces[i] &= ~move->dest;
+    board->pieces[move->color + move->piece] ^= move->src;
+    board->pieces[move->color + move->piece] |= move->dest;
+    if (move->dest & board->en_p && move->piece == PAWN)
     {
-        board->white[move->piece] ^= move->src;
-        board->white[move->piece] ^= move->dest;
+        if (move->color == WHITE)
+            board->pieces[BLACK + PAWN] &= ~(board->en_p >> 8);
+        else
+            board->pieces[WHITE + PAWN] &= ~(board->en_p << 8);
     }
+    if (board->to_move == WHITE)
+        board->to_move = BLACK;
     else
-    {
-        board->black[move->piece] ^= move->src;
-        board->black[move->piece] ^= move->dest;
-    }
+        board->to_move = WHITE;
+    if (move->piece == PAWN && (move->dest & 0xFFULL << 24))
+        board->en_p = move->dest << 8;
+    else if (move->piece == PAWN && (move->dest & 0xFFULL << 32))
+        board->en_p = move->dest >> 8;
+    else
+        board->en_p = 0x0ULL;
     update_combined_pos(board);
 }
 
@@ -167,6 +174,13 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
         if ((0x1ULL << i) & pieces)
         {
             uint64_t tmp = 0ULL;
+            if (i / 8 == 1 && color == WHITE)
+                tmp = 0x1ULL << (i + 16);
+            else if (i / 8 == 6 && color == BLACK)
+                tmp = 0x1ULL >> (i - 16);
+            tmp &= ~(friends | enemies);
+            moves |= tmp;
+            tmp = 0ULL;
             tmp |= gen_shift(PATTK, i - 8 - 1);
             tmp &= vert_mask((i % 8) + 2);
             if ((i % 8) - 1 > 0)
@@ -347,16 +361,8 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
 uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0;
-    if (color == WHITE)
-    {
-        moves |= gen_rook_moves(board, WHITE, pieces);
-        moves |= gen_bishop_moves(board, WHITE, pieces);
-    }
-    else
-    {
-        moves |= gen_rook_moves(board, BLACK, pieces);
-        moves |= gen_bishop_moves(board, BLACK, pieces);
-    }
+    moves |= gen_rook_moves(board, color, pieces);
+    moves |= gen_bishop_moves(board, color, pieces);
     return moves;
 }
 
@@ -447,31 +453,231 @@ void update_combined_pos(Board* board)
     board->all_black = 0x0ULL;
     for (i = 0; i < 6; ++i)
     {
-        board->all_white |= board->white[i];
-        board->all_black |= board->black[i];
+        board->all_white |= board->pieces[WHITE + i];
+        board->all_black |= board->pieces[BLACK + i];
+    }
+    if (!(board->pieces[WHITE + KING] & 0x08ULL))
+        board->castle &= ~0xFFULL;
+    if (!(board->pieces[BLACK + KING] & (0x08ULL << 56)))
+        board->castle &= ~(0xFFULL << 56);
+    if (!(board->pieces[WHITE + ROOK] & 0x01ULL))
+        board->castle &= ~(0x0FULL);
+    if (!(board->pieces[WHITE + ROOK] & 0x80ULL))
+        board->castle &= ~(0xF0ULL);
+    if (!(board->pieces[BLACK + ROOK] & (0x01ULL << 56)))
+        board->castle &= ~(0x0FULL << 56);
+    if (!(board->pieces[BLACK + ROOK] & (0x80ULL << 56)))
+        board->castle &= ~(0xF0ULL << 56);
+}
+
+uint64_t gen_all_attacks(Board* board, int color)
+{
+    uint64_t moves = 0x0ULL;
+        moves |= gen_pawn_moves(board, color, board->pieces[color + PAWN]);
+        moves |= gen_bishop_moves(board, color, board->pieces[color + BISHOP]);
+        moves |= gen_knight_moves(board, color, board->pieces[color + KNIGHT]);
+        moves |= gen_rook_moves(board, color, board->pieces[color + ROOK]);
+        moves |= gen_queen_moves(board, color, board->pieces[color + QUEEN]);
+        moves |= gen_king_moves(board, color, board->pieces[color + KING]);
+    return moves;
+}
+
+int gen_all_moves(Board* board, Cand* movearr)
+{
+    memset(movearr, 0, sizeof(Cand) * MOVES_PER_POSITION);
+    int ind = 0;
+    uint64_t pieces = 0x0ULL;
+    if (board->to_move == WHITE)
+        pieces = board->all_white;
+    else
+        pieces = board->all_black;
+    uint64_t lsb = pieces & -pieces;
+    while (lsb)
+    {
+        ind += extract_moves(board, board->to_move, lsb, movearr + ind);
+        pieces &= ~lsb;
+        lsb = pieces & -pieces;
+    }
+    return ind;
+}
+
+int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand.move);
+    if (depth == 0)
+        return get_board_value(&temp_board);
+    else
+    {
+        Cand cans[MOVES_PER_POSITION];
+        gen_all_moves(&temp_board, cans);
+        int i;
+        int board_value;
+        int temp = 0;
+        if (temp_board.to_move == BLACK)
+            board_value = 300;
+        else
+            board_value = -300;
+        for (i = 0; i < MOVES_PER_POSITION; ++i)
+        {
+            if (cans[i].move.src == 0x0ULL)
+                continue;
+            if (temp_board.to_move == BLACK)
+            {
+                temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
+                if (temp < board_value)
+                    board_value = temp;
+                beta = (temp < beta) ? temp : beta;
+                if (beta <= alpha)
+                    break;
+            }
+            else
+            {
+                temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
+                if (temp > board_value)
+                    board_value = temp;
+                alpha = (temp > alpha) ? temp : alpha;
+                if (beta <= alpha)
+                   break;
+            }
+        }
+        return board_value;
     }
 }
 
-uint64_t gen_all_moves(Board* board, int color)
+int get_board_value(Board* board)
 {
+    int white_score = 0;
+    int black_score = 0;
+    uint64_t all_pieces = board->all_white | board->all_black;
+    uint64_t lsb = all_pieces & -all_pieces;
+    while (lsb)
+    {
+        if (lsb & board->pieces[WHITE + PAWN])
+            white_score += 1;
+        else if (lsb & board->pieces[WHITE + BISHOP])
+            white_score += 3;
+        else if (lsb & board->pieces[WHITE + KNIGHT])
+            white_score += 3;
+        else if (lsb & board->pieces[WHITE + ROOK])
+            white_score += 5;
+        else if (lsb & board->pieces[WHITE + QUEEN])
+            white_score += 9;
+        else if (lsb & board->pieces[BLACK + PAWN])
+            black_score += 1;
+        else if (lsb & board->pieces[BLACK + BISHOP])
+            black_score += 3;
+        else if (lsb & board->pieces[BLACK + KNIGHT])
+            black_score += 3;
+        else if (lsb & board->pieces[BLACK + ROOK])
+            black_score += 5;
+        else if (lsb & board->pieces[BLACK + QUEEN])
+            black_score += 9;
+        all_pieces &= ~lsb;
+        lsb = all_pieces & -all_pieces;
+    }
+    return white_score - black_score;
+}
+
+int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
+{
+    //printf("0x%016lX\n", src);
+    int count = 0;
+    int piece = -1;
     uint64_t moves = 0x0ULL;
-    if (color == WHITE)
+    if (src & board->pieces[color + PAWN])
     {
-        moves |= gen_pawn_moves(board, WHITE, board->white[PAWN]);
-        moves |= gen_bishop_moves(board, WHITE, board->white[BISHOP]);
-        moves |= gen_knight_moves(board, WHITE, board->white[KNIGHT]);
-        moves |= gen_rook_moves(board, WHITE, board->white[ROOK]);
-        moves |= gen_queen_moves(board, WHITE, board->white[QUEEN]);
-        moves |= gen_king_moves(board, WHITE, board->white[KING]);
+        moves = gen_pawn_moves(board, color, src);
+        piece = PAWN;
     }
+    else if (src & board->pieces[color + BISHOP])
+    {
+        moves = gen_bishop_moves(board, color, src);
+        piece = BISHOP;
+    }
+    else if (src & board->pieces[color + KNIGHT])
+    {
+        moves = gen_knight_moves(board, color, src);
+        piece = KNIGHT;
+    }
+    else if (src & board->pieces[color + ROOK])
+    {
+        moves = gen_rook_moves(board, color, src);
+        piece = ROOK;
+    }
+    else if (src & board->pieces[color + QUEEN])
+    {
+        moves = gen_queen_moves(board, color, src);
+        piece = QUEEN;
+    }
+    else if (src & board->pieces[color + KING])
+    {
+        moves = gen_king_moves(board, color, src);
+        piece = KING;
+    }
+    uint64_t lsb = moves & -moves;
+    while (lsb)
+    {
+        Move temp_move;
+        temp_move.src = src;
+        temp_move.dest = lsb;
+        temp_move.piece = piece;
+        temp_move.color = color;
+        if (is_legal(board, temp_move))
+        {
+            movearr[count].move.src = src;
+            movearr[count].move.dest = lsb;
+            movearr[count].move.piece = piece;
+            movearr[count].move.color = color;
+            movearr[count].weight = 1;
+            count++;
+        }
+        moves &= ~lsb;
+        lsb = moves & -moves;
+    }
+    return count;
+}
+
+int is_legal(Board* board, Move move)
+{
+    Board temp;
+    memcpy(&temp, board, sizeof(Board));
+    move_piece(&temp, &move);
+    if(temp.to_move == WHITE)
+        return !(temp.pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE));
     else
+        return !(temp.pieces[WHITE + KING] & gen_all_attacks(&temp, BLACK));
+}
+
+Move find_best_move(Board* board, int depth)
+{
+    Cand cands[MOVES_PER_POSITION];
+    gen_all_moves(board, cands);
+    Cand bestmove = cands[0];
+    int i;
+    for (i = 0; i < MOVES_PER_POSITION; ++i)
     {
-        moves |= gen_pawn_moves(board, BLACK, board->black[PAWN]);
-        moves |= gen_bishop_moves(board, BLACK, board->black[BISHOP]);
-        moves |= gen_knight_moves(board, BLACK, board->black[KNIGHT]);
-        moves |= gen_rook_moves(board, BLACK, board->black[ROOK]);
-        moves |= gen_queen_moves(board, BLACK, board->black[QUEEN]);
-        moves |= gen_king_moves(board, BLACK, board->black[KING]);
+        if (cands[i].move.src == 0x0ULL)
+            continue;
+        cands[i].weight = eval_prune(board, cands[i], -300, 300, depth);
+        print_location(cands[i].move.src);
+        printf(" to ");
+        print_location(cands[i].move.dest);
+        printf(" weight: %d\n", cands[i].weight);
+        if (cands[i].weight > bestmove.weight)
+            bestmove = cands[i];
     }
-    return moves;
+    qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
+    if (bestmove.weight != 0)
+    {
+        for (i = 0; i < MOVES_PER_POSITION; ++i)
+            if (cands[i].weight != bestmove.weight)
+                break;
+    }
+    if (i != 0)
+        bestmove = cands[rand() % i - 1];
+    else
+        bestmove = cands[0];
+    return bestmove.move;
 }
