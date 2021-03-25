@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "board.h"
 #include "io.h"
 
@@ -653,28 +654,31 @@ int is_legal(Board* board, Move move)
 Move find_best_move(Board* board, int depth)
 {
     Cand cands[MOVES_PER_POSITION];
-    gen_all_moves(board, cands);
-    Cand bestmove = cands[0];
+    int num_moves = gen_all_moves(board, cands);
+    qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
+    Cand bestmove;
+    bestmove.weight = -301;
     int i;
-    for (i = 0; i < MOVES_PER_POSITION; ++i)
+    for (i = 0; i < num_moves; ++i)
     {
         if (cands[i].move.src == 0x0ULL)
             continue;
         cands[i].weight = eval_prune(board, cands[i], -300, 300, depth);
+        if (board->to_move == BLACK)
+            cands[i].weight *= -1;
         print_location(cands[i].move.src);
-        printf(" to ");
+        write(1, " to ", 4);
         print_location(cands[i].move.dest);
-        printf(" weight: %d\n", cands[i].weight);
+        char s[20];
+        sprintf(s, " %d's weight: %d\n", i, cands[i].weight);
+        write(1, s, strlen(s));
         if (cands[i].weight > bestmove.weight)
             bestmove = cands[i];
     }
-    qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
-    if (bestmove.weight != 0)
-    {
-        for (i = 0; i < MOVES_PER_POSITION; ++i)
-            if (cands[i].weight != bestmove.weight)
-                break;
-    }
+    qsort(cands, num_moves, sizeof(Cand), comp_cand);
+    for (i = 0; i < num_moves; ++i)
+        if (cands[i].weight != bestmove.weight)
+            break;
     if (i != 0)
         bestmove = cands[rand() % i - 1];
     else

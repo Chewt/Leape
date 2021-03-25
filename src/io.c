@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "board.h"
 #include "io.h"
 
 void print_location(uint64_t board)
 {
     int square = 63 - bitScanForward(board);
-    printf("%c%d", square%8+'a',8-square/8);
+    char s[20];
+    sprintf(s, "%c%d", square%8+'a',8-square/8);
+    write(1, s, strlen(s));
 }
 
 void print_board(Board* board)
@@ -120,7 +123,7 @@ void load_fen(Board* board, char* fen)
         board->en_p = 0x0ULL;
     else
         board->en_p = 0x01ULL << ((token[0] - 'a') + ('8' - token[1]) * 8);
-
+    update_combined_pos(board);
     free(fen_copy);
 }
 

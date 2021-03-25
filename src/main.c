@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
 #include "board.h"
 #include "io.h"
@@ -9,22 +10,25 @@ int main()
 {
     srand(time(0));
     int running = 1;
+    FILE* input = fdopen(0, "r");
     Board board;
     set_default(&board);
     while (running)
     {
         char* message = NULL;
         size_t size = 0;
-        getline(&message, &size, stdin);
+        getline(&message, &size, input);
         char* saveptr;
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
         {
-            printf("id name Leape\nid author Hayden Johnson\nuciok\n");
+            char* s = "id name Leape\nid author Hayden Johnson\nuciok\n";
+            write(1, s, strlen(s));
         }
         else if (!strcmp(token, "isready"))
         {
-            printf("readyok\n");
+            char* s = "readyok\n";
+            write(1, s, strlen(s));
         }
         else
             token = strtok_r(message, " ", &saveptr);
@@ -44,11 +48,12 @@ int main()
             {
                 token = strtok_r(NULL, " ", &saveptr);
                 print_board(&board);
+                printf("to move: %d\n", board.to_move);
                 Move bestmove = find_best_move(&board, atoi(token));
-                printf("bestmove ");
+                write(1, "bestmove ", 9);
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
-                printf("\n");
+                write(1, "\n", 1);
             }
         }
         else if (!strcmp(token, "quit"))
@@ -57,5 +62,6 @@ int main()
         }
         free(message);
     }
+    fclose(input);
     return 0;
 }
