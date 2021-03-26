@@ -632,6 +632,7 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
             movearr[count].move.piece = piece;
             movearr[count].move.color = color;
             movearr[count].weight = 1;
+            apply_heuristics(board, movearr + count);
             count++;
         }
         moves &= ~lsb;
@@ -663,7 +664,7 @@ Move find_best_move(Board* board, int depth)
     {
         if (cands[i].move.src == 0x0ULL)
             continue;
-        cands[i].weight = eval_prune(board, cands[i], -300, 300, depth);
+        cands[i].weight += eval_prune(board, cands[i], -300, 300, depth);
         if (board->to_move == BLACK)
             cands[i].weight *= -1;
         print_location(cands[i].move.src);
@@ -684,4 +685,26 @@ Move find_best_move(Board* board, int depth)
     else
         bestmove = cands[0];
     return bestmove.move;
+}
+
+void apply_heuristics(Board* board, Cand* cand)
+{
+    if (cand->move.color == WHITE)
+    {
+        if (cand->move.dest & board->all_black)
+            cand->weight += 1;
+        if (cand->move.dest & board->pieces[BLACK + KING])
+            cand->weight += 1;
+        if (cand->move.dest & ~(gen_all_attacks(board, BLACK)))
+            cand->weight += 3;
+    }
+    else
+    {
+        if (cand->move.dest & board->all_white)
+            cand->weight += 1;
+        if (cand->move.dest & board->pieces[WHITE + KING])
+            cand->weight += 1;
+        if (cand->move.dest & ~(gen_all_attacks(board, WHITE)))
+            cand->weight += 3;
+    }
 }
