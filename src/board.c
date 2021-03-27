@@ -5,6 +5,7 @@
 #include "board.h"
 #include "io.h"
 
+/* Constants for piece attacks */
 const uint64_t RDIAG = 0x0102040810204080;
 const uint64_t LDIAG = 0x8040201008040201;
 const uint64_t VERT  = 0x0101010101010101;
@@ -512,7 +513,9 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
     else
     {
         Cand cans[MOVES_PER_POSITION];
-        gen_all_moves(&temp_board, cans);
+        int num_moves = gen_all_moves(&temp_board, cans);
+        if (depth > 4)
+            num_moves = 10;
         int i;
         int board_value;
         int temp = 0;
@@ -520,10 +523,10 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
             board_value = 300;
         else
             board_value = -300;
-        for (i = 0; i < MOVES_PER_POSITION; ++i)
+        for (i = 0; i < num_moves; ++i)
         {
             if (cans[i].move.src == 0x0ULL)
-                continue;
+                break;
             if (temp_board.to_move == BLACK)
             {
                 temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
@@ -659,24 +662,32 @@ Move find_best_move(Board* board, int depth)
     qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
     Cand bestmove;
     bestmove.weight = -301;
+    int j;
     int i;
-    for (i = 0; i < num_moves; ++i)
+    for (j = 1; j <= depth; ++j)
     {
-        if (cands[i].move.src == 0x0ULL)
-            continue;
-        cands[i].weight += eval_prune(board, cands[i], -300, 300, depth);
-        if (board->to_move == BLACK)
-            cands[i].weight *= -1;
-        print_location(cands[i].move.src);
-        write(1, " to ", 4);
-        print_location(cands[i].move.dest);
-        char s[20];
-        sprintf(s, " %d's weight: %d\n", i, cands[i].weight);
-        write(1, s, strlen(s));
-        if (cands[i].weight > bestmove.weight)
-            bestmove = cands[i];
+        for (i = 0; i < num_moves; ++i)
+        {
+            if (cands[i].move.src == 0x0ULL)
+                break;
+            int temp_weight = eval_prune(board, cands[i], -300, 300, j);
+            if (board->to_move == BLACK)
+                temp_weight *= -1;
+            cands[i].weight += temp_weight;
+            if (j == depth)
+            {
+                print_location(cands[i].move.src);
+                write(1, " to ", 4);
+                print_location(cands[i].move.dest);
+                char s[20];
+                sprintf(s, " %d's weight: %d\n", i, cands[i].weight);
+                write(1, s, strlen(s));
+            }
+            if (cands[i].weight > bestmove.weight)
+                bestmove = cands[i];
+        }
+        qsort(cands, num_moves, sizeof(Cand), comp_cand);
     }
-    qsort(cands, num_moves, sizeof(Cand), comp_cand);
     for (i = 0; i < num_moves; ++i)
         if (cands[i].weight != bestmove.weight)
             break;
@@ -691,6 +702,9 @@ void apply_heuristics(Board* board, Cand* cand)
 {
     if (cand->move.color == WHITE)
     {
+        if (get_piece_value(board, BLACK, cand->move.dest) >
+                get_piece_value(board, WHITE, cand->move.src))
+            cand->weight += 1;
         if (cand->move.dest & board->all_black)
             cand->weight += 1;
         if (cand->move.dest & board->pieces[BLACK + KING])
@@ -700,6 +714,9 @@ void apply_heuristics(Board* board, Cand* cand)
     }
     else
     {
+        if (get_piece_value(board, WHITE, cand->move.dest) >
+                get_piece_value(board, BLACK, cand->move.src))
+            cand->weight += 1;
         if (cand->move.dest & board->all_white)
             cand->weight += 1;
         if (cand->move.dest & board->pieces[WHITE + KING])
@@ -707,4 +724,20 @@ void apply_heuristics(Board* board, Cand* cand)
         if (cand->move.dest & ~(gen_all_attacks(board, WHITE)))
             cand->weight += 3;
     }
+}
+
+int get_piece_value(Board* board, int color, uint64_t pieces)
+{
+        if (pieces & board->pieces[color + PAWN])
+            return 1;
+        if (pieces & board->pieces[color + BISHOP])
+            return 3;
+        if (pieces & board->pieces[color + KNIGHT])
+            return 3;
+        if (pieces & board->pieces[color + ROOK])
+            return 5;
+        if (pieces & board->pieces[color + QUEEN])
+            return 9;
+        else
+            return 0;
 }
