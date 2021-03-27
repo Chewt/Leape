@@ -49,7 +49,11 @@ int main()
                 token = strtok_r(NULL, " ", &saveptr);
                 print_board(&board);
                 printf("to move: %d\n", board.to_move);
+                clock_t t = clock();
                 Move bestmove = find_best_move(&board, atoi(token));
+                t = clock() - t;
+                double time_taken = ((double)t)/CLOCKS_PER_SEC;
+                printf("Time taken: %f\n", time_taken);
                 write(1, "bestmove ", 9);
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
