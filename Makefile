@@ -5,7 +5,7 @@ SOURCES = $(wildcard $(SRCDIR)/*.c)
 OBJECTS = $(SOURCES:$(SRCDIR)%.c=$(OBJDIR)%.o)
 INCLUDES = $(SOURCES:$(SRCDIR)%.c=$(INCLUDEDIR)%.h)
 UNIDEPS = 
-CFLAGS = -I$(INCLUDEDIR) -g -Wall
+CFLAGS = -I$(INCLUDEDIR) -O2 -Wall
 CC = gcc
 TARGET = leape
 

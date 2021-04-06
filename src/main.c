@@ -48,6 +48,16 @@ int main()
             {
                 token = strtok_r(NULL, " ", &saveptr);
                 print_board(&board);
+
+                /*
+                Board b;
+                memset(&b, 0, sizeof(Board));
+                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
+                print_board(&b);
+                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, WHITE, board.pieces[WHITE + PAWN]);
+                print_board(&b);
+                */
+
                 printf("to move: %d\n", board.to_move);
                 clock_t t = clock();
                 Move bestmove = find_best_move(&board, atoi(token));

@@ -176,10 +176,12 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
         if ((0x1ULL << i) & pieces)
         {
             uint64_t tmp = 0ULL;
-            if (i / 8 == 1 && color == WHITE)
-                tmp = 0x1ULL << (i + 16);
-            else if (i / 8 == 6 && color == BLACK)
-                tmp = 0x1ULL >> (i - 16);
+            if (i / 8 == 1 && !((0x1ULL << (i + 8)) & (friends | enemies)) &&
+                    color == WHITE)
+                tmp = gen_shift(0x1ULL, i + 16);
+            else if (i / 8 == 6 && !((0x1ULL << (i - 8)) & (friends | enemies))
+                    && color == BLACK)
+                tmp = gen_shift(0x1ULL, i - 16);
             tmp &= ~(friends | enemies);
             moves |= tmp;
             tmp = 0ULL;
@@ -188,9 +190,9 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
             if ((i % 8) - 1 > 0)
                 tmp &= ~vert_mask((i % 8) - 1);
             if (i / 8 < 7 && color == BLACK)
-                tmp &= ~gen_shift(~(0ULL), (i / 8 - 1) * 8);
-            if (i / 8 > 1 && color == WHITE)
-                tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 + 1) * 8);
+                tmp &= ~gen_shift(~(0ULL), (i / 8) * 8);
+            if (i / 8 > 0 && color == WHITE)
+                tmp &= ~gen_shift(~(0ULL), -56 + (i / 8) * 8);
             tmp &= enemies | board->en_p;;
             moves |= tmp;
         }
@@ -649,10 +651,10 @@ int is_legal(Board* board, Move move)
     Board temp;
     memcpy(&temp, board, sizeof(Board));
     move_piece(&temp, &move);
-    if(temp.to_move == WHITE)
-        return !(temp.pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE));
-    else
+    if(board->to_move == WHITE)
         return !(temp.pieces[WHITE + KING] & gen_all_attacks(&temp, BLACK));
+    else
+        return !(temp.pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE));
 }
 
 Move find_best_move(Board* board, int depth)
@@ -666,6 +668,8 @@ Move find_best_move(Board* board, int depth)
     int i;
     for (j = 1; j <= depth; ++j)
     {
+        if (j > 4)
+            num_moves = 10;
         for (i = 0; i < num_moves; ++i)
         {
             if (cands[i].move.src == 0x0ULL)
@@ -673,7 +677,10 @@ Move find_best_move(Board* board, int depth)
             int temp_weight = eval_prune(board, cands[i], -300, 300, j);
             if (board->to_move == BLACK)
                 temp_weight *= -1;
-            cands[i].weight += temp_weight;
+            if (cands[i].weight >= 300)
+                cands[i].weight += temp_weight;
+            else
+                cands[i].weight = temp_weight;
             if (j == depth)
             {
                 print_location(cands[i].move.src);
@@ -689,10 +696,12 @@ Move find_best_move(Board* board, int depth)
         qsort(cands, num_moves, sizeof(Cand), comp_cand);
     }
     for (i = 0; i < num_moves; ++i)
+    {
         if (cands[i].weight != bestmove.weight)
             break;
-    if (i != 0)
-        bestmove = cands[rand() % i - 1];
+    }
+    if (i - 1 != 0)
+        bestmove = cands[rand() % (i - 1)];
     else
         bestmove = cands[0];
     return bestmove.move;
@@ -711,6 +720,8 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (cand->move.dest & ~(gen_all_attacks(board, BLACK)))
             cand->weight += 3;
+        if (will_be_checkmate(board, WHITE, &cand->move))
+            cand->weight += 600;
     }
     else
     {
@@ -723,6 +734,8 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (cand->move.dest & ~(gen_all_attacks(board, WHITE)))
             cand->weight += 3;
+        if (will_be_checkmate(board, BLACK, &cand->move))
+            cand->weight += 300;
     }
 }
 
@@ -740,4 +753,31 @@ int get_piece_value(Board* board, int color, uint64_t pieces)
             return 9;
         else
             return 0;
+}
+
+int is_checkmate(Board* board, int color)
+{
+    if (color == WHITE)
+    {
+        if (board->pieces[WHITE + KING] & gen_all_attacks(board, BLACK))
+            if (!gen_king_moves(board, WHITE, board->pieces[WHITE + KING]))
+                return 1;
+    }
+    else if (color == BLACK)
+    {
+        if (board->pieces[BLACK + KING] & gen_all_attacks(board, WHITE))
+            if (!gen_king_moves(board, BLACK, board->pieces[BLACK + KING]))
+                return 1;
+    }
+    return 0;
+}
+
+int will_be_checkmate(Board* board, int color, Move* move)
+{
+    Board temp;
+    memcpy(&temp, board, sizeof(Board));
+    move_piece(&temp, move);
+    if (is_checkmate(&temp, color))
+        return 1;
+    return 0;
 }
