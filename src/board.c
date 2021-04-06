@@ -178,10 +178,10 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
             uint64_t tmp = 0ULL;
             if (i / 8 == 1 && !((0x1ULL << (i + 8)) & (friends | enemies)) &&
                     color == WHITE)
-                tmp = 0x1ULL << (i + 16);
+                tmp = gen_shift(0x1ULL, i + 16);
             else if (i / 8 == 6 && !((0x1ULL << (i - 8)) & (friends | enemies))
                     && color == BLACK)
-                tmp = (0x1ULL << 63) >> (i - 16);
+                tmp = gen_shift(0x1ULL, i - 16);
             tmp &= ~(friends | enemies);
             moves |= tmp;
             tmp = 0ULL;
@@ -192,7 +192,7 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
             if (i / 8 < 7 && color == BLACK)
                 tmp &= ~gen_shift(~(0ULL), (i / 8) * 8);
             if (i / 8 > 0 && color == WHITE)
-                tmp &= ~gen_shift(~(0ULL), -63 + (i / 8 + 1) * 8);
+                tmp &= ~gen_shift(~(0ULL), -56 + (i / 8) * 8);
             tmp &= enemies | board->en_p;;
             moves |= tmp;
         }
@@ -677,7 +677,7 @@ Move find_best_move(Board* board, int depth)
             int temp_weight = eval_prune(board, cands[i], -300, 300, j);
             if (board->to_move == BLACK)
                 temp_weight *= -1;
-            if (cands[i].weight > 300)
+            if (cands[i].weight >= 300)
                 cands[i].weight += temp_weight;
             else
                 cands[i].weight = temp_weight;
