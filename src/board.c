@@ -62,6 +62,12 @@ int bitScanReverse(uint64_t bb)
     return index64[(bb * debruijn64) >> 58];
 }
 
+/*******************************************************************************
+ * Returns a bit mask for a vertical portion of the bit board
+ *
+ * @param count The number of columns starting from the right side of the board
+ *              to include in the bit mask 
+ ******************************************************************************/
 uint64_t vert_mask(int count)
 {
     if (count == 1)
@@ -82,6 +88,11 @@ uint64_t vert_mask(int count)
         return 0xFFFFFFFFFFFFFFFF;
 }
 
+/*******************************************************************************
+ * Sets the board to a default chess position
+ *
+ * @param board The board to set to a default position
+ ******************************************************************************/
 void set_default(Board* board)
 {
     memset(board, 0, sizeof(Board));
@@ -103,6 +114,14 @@ void set_default(Board* board)
     update_combined_pos(board);
 }
 
+/*******************************************************************************
+ * A generalized bitwise shift function that shifts left for positive numbers
+ * and shifts right for negative numbers
+ *
+ * @param src A unsigned 64 bit number to apply the shift to
+ * @param count The number of digits to shift the number
+ * @return the new shifted number
+ ******************************************************************************/
 uint64_t gen_shift(uint64_t src, int count)
 {
     if (bitScanReverse(src) + count < 0 || bitScanForward(src) + count > 63)
@@ -113,6 +132,14 @@ uint64_t gen_shift(uint64_t src, int count)
         return src << count;
 }
 
+/*******************************************************************************
+ * A function to compare two Cand structs by their attribute "weight". 
+ * This was implemented for use in the qsort function
+ *
+ * @param one The "left" side of the expression
+ * @param two The "right" side of the expression
+ * @return An indicator as to which argument is of greater value than the other
+ ******************************************************************************/
 int comp_cand(const void* one, const void* two)
 {
     if (((Cand*)one)->weight > ((Cand*)two)->weight)
@@ -122,6 +149,12 @@ int comp_cand(const void* one, const void* two)
     return 0;
 }
 
+/*******************************************************************************
+ * Updates the board to the result of moving the requested piece
+ *
+ * @param board The board to make the move on
+ * @param move The move to make on the board
+ ******************************************************************************/
 void move_piece(Board* board, Move* move)
 {
     int i;
@@ -149,6 +182,14 @@ void move_piece(Board* board, Move* move)
     update_combined_pos(board);
 }
 
+/*******************************************************************************
+ * Generates all possible legal pawn moves for a given bitboard of pawns
+ *
+ * @param board The board to base the generated moves on
+ * @param color The color of the pawn to generate moves for
+ * @param pieces The bitboard of pawns to generate moves for
+ * @return A bitboard containing the generated moves
+ ******************************************************************************/
 uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0ULL;
@@ -203,6 +244,14 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
     return moves;
 }
 
+/*******************************************************************************
+ * Generates all possible legal bishop moves for a given bitboard of bishop
+ *
+ * @param board The board to base the generated moves on
+ * @param color The color of the bishops to generate moves for
+ * @param pieces The bitboard of bishops to generate moves for
+ * @return A bitboard containing the generated moves
+ ******************************************************************************/
 uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0;
@@ -284,6 +333,14 @@ uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
     return moves;
 }
 
+/*******************************************************************************
+ * Generates all possible legal rook moves for a given bitboard of rook
+ *
+ * @param board The board to base the generated moves on
+ * @param color The color of the rooks to generate moves for
+ * @param pieces The bitboard of rooks to generate moves for
+ * @return A bitboard containing the generated moves
+ ******************************************************************************/
 uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0;
@@ -362,6 +419,14 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
     return moves;
 }
 
+/*******************************************************************************
+ * Generates all possible legal queen moves for a given bitboard of queen
+ *
+ * @param board The board to base the generated moves on
+ * @param color The color of the queens to generate moves for
+ * @param pieces The bitboard of queens to generate moves for
+ * @return A bitboard containing the generated moves
+ ******************************************************************************/
 uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0;
@@ -370,6 +435,14 @@ uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces)
     return moves;
 }
 
+/*******************************************************************************
+ * Generates all possible legal knight moves for a given bitboard of queen
+ *
+ * @param board The board to base the generated moves on
+ * @param color The color of the knights to generate moves for
+ * @param pieces The bitboard of knights to generate moves for
+ * @return A bitboard containing the generated moves
+ ******************************************************************************/
 uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0ULL;
@@ -401,6 +474,14 @@ uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
     return moves;
 }
 
+/*******************************************************************************
+ * Generates all possible legal king moves for a given bitboard of queen
+ *
+ * @param board The board to base the generated moves on
+ * @param color The color of the king to generate moves for
+ * @param pieces The bitboard of king to generate moves for
+ * @return A bitboard containing the generated moves
+ ******************************************************************************/
 uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
 {
     uint64_t moves = 0ULL;
@@ -450,6 +531,13 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
     return moves;
 }
 
+/*******************************************************************************
+ * Updates various attributes of the given board struct regarding board state
+ * that may have changed such as castling rights and combined locations of all
+ * pieces
+ *
+ * @param board The board to update
+ ******************************************************************************/
 void update_combined_pos(Board* board)
 {
     int i;
@@ -474,6 +562,14 @@ void update_combined_pos(Board* board)
         board->castle &= ~(0xF0ULL << 56);
 }
 
+/*******************************************************************************
+ * Generates a bitboard with all enemy moves on it, with no information 
+ * regarding what type of piece is making that move.
+ *
+ * @param board The board to generate the moves from
+ * @param color The color of the side you wish to generate the moves from
+ * @return The bitboard containing the attacks
+ ******************************************************************************/
 uint64_t gen_all_attacks(Board* board, int color)
 {
     uint64_t moves = 0x0ULL;
@@ -486,6 +582,14 @@ uint64_t gen_all_attacks(Board* board, int color)
     return moves;
 }
 
+/*******************************************************************************
+ * Populates an array with all possible moves on the current board. It will
+ * only generate moves for the side that is indicated by the attribute to_move
+ * 
+ * @param board The board to generate moves from
+ * @param movearr The array of moves to populate with the created moves. Its 
+ *                length will always be of the constant MOVES_PER_POSITION
+ ******************************************************************************/
 int gen_all_moves(Board* board, Cand* movearr)
 {
     memset(movearr, 0, sizeof(Cand) * MOVES_PER_POSITION);
@@ -505,6 +609,19 @@ int gen_all_moves(Board* board, Cand* movearr)
     return ind;
 }
 
+/*******************************************************************************
+ * Minimax algo with alpha-beta pruning to find the best chess move.
+ *
+ * @param board The board to find the best move for
+ * @param cand The candidate move used to start the search. The candidate move 
+ *             is made on a temporary board, then the best move among the 
+ *             resulting board is found
+ * @param alpha Used for alpha-beta pruning. It is the the highest value seen so
+ *             far in the search.
+ * @param beta Used for alpha-beta pruning. It is the lowest value seen so far
+ *             in the search.
+ * @param depth The depth to which the function should search
+ ******************************************************************************/
 int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
 {
     Board temp_board;
@@ -552,6 +669,13 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
     }
 }
 
+/*******************************************************************************
+ * Returns the material value of the board in terms of the pieces on the board.
+ * black positive values are good for white, while negative values are good for 
+ * black.
+ *
+ * @param board The board that gets evaluated
+ ******************************************************************************/
 int get_board_value(Board* board)
 {
     int white_score = 0;
@@ -586,6 +710,17 @@ int get_board_value(Board* board)
     return white_score - black_score;
 }
 
+/*******************************************************************************
+ * Extracts all the moves from a bitboard and creates a Move struct for each of
+ * them and puts them in the given array.
+ *
+ * @param board The board to extract the moves from. It is used to verify that
+ *              the move being extracted is legal.
+ * @param color The color of the pieces that are making the moves
+ * @param src The bitboard that contains the piece that will be making the moves
+ * @param movearr The array of candidate moves to be filled with the extracted
+ *                moves. It is guaranteed to be of length MOVES_PER_POSITION. 
+ ******************************************************************************/
 int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
 {
     //printf("0x%016lX\n", src);
@@ -646,6 +781,13 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
     return count;
 }
 
+/*******************************************************************************
+ * Determines if making the proposed move will result in the friendly king being
+ * put in check
+ *
+ * @param board The board to apply the move to
+ * @param move The proposed move that will be checked
+ ******************************************************************************/
 int is_legal(Board* board, Move move)
 {
     Board temp;
@@ -657,6 +799,13 @@ int is_legal(Board* board, Move move)
         return !(temp.pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE));
 }
 
+/*******************************************************************************
+ * Returns the best move to make in a given position when searched at a given
+ * depth
+ *
+ * @param board The board to search for the best move
+ * @param depth The depth at which to search the board
+ ******************************************************************************/
 Move find_best_move(Board* board, int depth)
 {
     Cand cands[MOVES_PER_POSITION];
@@ -707,6 +856,17 @@ Move find_best_move(Board* board, int depth)
     return bestmove.move;
 }
 
+/*******************************************************************************
+ * Gives a move a weight based on the following heuristics:
+ * Is the square the piece is moving to worth more than itself?
+ * Is the square the piece is moving to occupied by an enemy piece?
+ * Does the move result in the enemy king being put in check?
+ * Is the target square not attacked by any enemy piece?
+ * Will the move result in checkmate?
+ *
+ * @param board The board to check the move against
+ * @param cand The candidate move to apply these heuristics to.
+ ******************************************************************************/
 void apply_heuristics(Board* board, Cand* cand)
 {
     if (cand->move.color == WHITE)
@@ -739,7 +899,14 @@ void apply_heuristics(Board* board, Cand* cand)
     }
 }
 
-int get_piece_value(Board* board, int color, uint64_t pieces)
+/*******************************************************************************
+ * Gets the material value of the given piece or piece
+ *
+ * @param board The board from which the piece came from
+ * @param color The color of the piece to check
+ * @param pieces The piece whos value is to be returned
+ ******************************************************************************/
+int get_piece_value(Board* board, int color, uint64_t piece)
 {
         if (pieces & board->pieces[color + PAWN])
             return 1;
@@ -755,6 +922,12 @@ int get_piece_value(Board* board, int color, uint64_t pieces)
             return 0;
 }
 
+/*******************************************************************************
+ * Checks if the current boardstate is checkmate for the given color
+ *
+ * @param board The board to check
+ * @param color The color of the king to check for checkmate
+ ******************************************************************************/
 int is_checkmate(Board* board, int color)
 {
     if (color == WHITE)
@@ -772,6 +945,13 @@ int is_checkmate(Board* board, int color)
     return 0;
 }
 
+/*******************************************************************************
+ * Checks if making a move will result in checkmate
+ *
+ * @param board the board to test for checkmate
+ * @param color the color of the side to check checkmate for
+ * @param move the move to test if it results in checkmate
+ ******************************************************************************/
 int will_be_checkmate(Board* board, int color, Move* move)
 {
     Board temp;
