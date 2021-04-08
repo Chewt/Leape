@@ -234,7 +234,7 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
                 tmp &= ~gen_shift(~(0ULL), (i / 8) * 8);
             if (i / 8 > 0 && color == WHITE)
                 tmp &= ~gen_shift(~(0ULL), -56 + (i / 8) * 8);
-            tmp &= enemies | board->en_p;;
+            tmp &= enemies | board->en_p;
             moves |= tmp;
         }
         if (pieces >> i == 1)
@@ -876,7 +876,7 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (cand->move.dest & board->all_black)
             cand->weight += 1;
-        if (cand->move.dest & board->pieces[BLACK + KING])
+        if (will_be_checkmate(board, WHITE, &cand->move))
             cand->weight += 1;
         if (cand->move.dest & ~(gen_all_attacks(board, BLACK)))
             cand->weight += 3;
@@ -890,12 +890,12 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (cand->move.dest & board->all_white)
             cand->weight += 1;
-        if (cand->move.dest & board->pieces[WHITE + KING])
+        if (will_be_checkmate(board, BLACK, &cand->move))
             cand->weight += 1;
         if (cand->move.dest & ~(gen_all_attacks(board, WHITE)))
             cand->weight += 3;
         if (will_be_checkmate(board, BLACK, &cand->move))
-            cand->weight += 300;
+            cand->weight += 600;
     }
 }
 
@@ -908,18 +908,17 @@ void apply_heuristics(Board* board, Cand* cand)
  ******************************************************************************/
 int get_piece_value(Board* board, int color, uint64_t piece)
 {
-        if (pieces & board->pieces[color + PAWN])
-            return 1;
-        if (pieces & board->pieces[color + BISHOP])
-            return 3;
-        if (pieces & board->pieces[color + KNIGHT])
-            return 3;
-        if (pieces & board->pieces[color + ROOK])
-            return 5;
-        if (pieces & board->pieces[color + QUEEN])
-            return 9;
-        else
-            return 0;
+    if (piece & board->pieces[color + PAWN])
+        return 1;
+    if (piece & board->pieces[color + BISHOP])
+        return 3;
+    if (piece & board->pieces[color + KNIGHT])
+        return 3;
+    if (piece & board->pieces[color + ROOK])
+        return 5;
+    if (piece & board->pieces[color + QUEEN])
+        return 9;
+    return 0;
 }
 
 /*******************************************************************************
@@ -959,5 +958,30 @@ int will_be_checkmate(Board* board, int color, Move* move)
     move_piece(&temp, move);
     if (is_checkmate(&temp, color))
         return 1;
+    return 0;
+}
+
+/*******************************************************************************
+ * Checks if making a move will result in the enemy king being in check
+ *
+ * @param board The board to test the move on 
+ * @param color The color of the piece that makes the move
+ * @param move The move to test if it results in check
+ ******************************************************************************/
+int will_be_check(Board* board, int color, Move* move)
+{
+    Board temp;
+    memcpy(&temp, board, sizeof(Board));
+    move_piece(&temp, move);
+    if (color == WHITE)
+    {
+        if (board->pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE))
+            return 1;
+    }
+    else
+    {
+        if (board->pieces[WHITE + KING] & gen_all_attacks(&temp, BLACK))
+            return 1;
+    }
     return 0;
 }

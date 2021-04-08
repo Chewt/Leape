@@ -77,6 +77,7 @@ void apply_heuristics(Board* board, Cand* cand);
 int get_piece_value(Board* board, int color, uint64_t piece);
 int is_checkmate(Board* board, int color);
 int will_be_checkmate(Board* board, int color, Move* move);
+int will_be_check(Board* board, int color, Move* move);
 
 int bitScanForward(uint64_t bb);
 #endif

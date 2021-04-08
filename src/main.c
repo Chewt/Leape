@@ -47,14 +47,14 @@ int main()
             if (token && !strcmp(token, "depth"))
             {
                 token = strtok_r(NULL, " ", &saveptr);
-                print_board(&board);
+                //print_board(&board);
 
                 /*
                 Board b;
                 memset(&b, 0, sizeof(Board));
-                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
+                b.pieces[WHITE + PAWN] = board.en_p;
                 print_board(&b);
-                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, WHITE, board.pieces[WHITE + PAWN]);
+                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
                 print_board(&b);
                 */
 
