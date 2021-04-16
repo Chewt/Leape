@@ -47,13 +47,20 @@ int main()
             if (token && !strcmp(token, "depth"))
             {
                 token = strtok_r(NULL, " ", &saveptr);
-                //print_board(&board);
 
                 /*
+                if (is_stalemate(&board, board.to_move))
+                    printf("Is stalemate!\n");
+                else
+                    printf("Is not stalemate!\n");
+                if (is_checkmate(&board, board.to_move))
+                    printf("Is checkmate!\n");
+                else
+                    printf("Is not checkmate!\n");
+                //print_board(&board);
+
                 Board b;
                 memset(&b, 0, sizeof(Board));
-                b.pieces[WHITE + PAWN] = board.en_p;
-                print_board(&b);
                 b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
                 print_board(&b);
                 */
