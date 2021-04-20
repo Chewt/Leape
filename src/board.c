@@ -828,10 +828,7 @@ Move find_best_move(Board* board, int depth)
             int temp_weight = eval_prune(board, cands[i], -300, 300, j);
             if (board->to_move == BLACK)
                 temp_weight *= -1;
-            if (cands[i].weight >= 300)
-                cands[i].weight += temp_weight;
-            else
-                cands[i].weight = temp_weight;
+            cands[i].weight = temp_weight;
             if (j == depth)
             {
                 print_location(cands[i].move.src);
@@ -896,8 +893,8 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (cand->move.dest & ~(gen_all_attacks(board, WHITE)))
             cand->weight += 3;
-        if (will_be_checkmate(board, WHITE, &cand->move))
-            cand->weight += 600;
+        //if (will_be_checkmate(board, WHITE, &cand->move))
+            //cand->weight += 600;
     }
 }
 

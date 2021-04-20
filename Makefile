@@ -12,6 +12,10 @@ TARGET = leape
 .PHONY: all 
 all: $(TARGET)
 
+.PHONY: debug
+debug: CFLAGS += -g
+debug: clean all
+
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) $(CFLAGS) -o $(TARGET)
 
