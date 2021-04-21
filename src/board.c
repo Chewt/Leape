@@ -1048,3 +1048,59 @@ int is_stalemate(Board* board, int color)
     }
     return 0;
 }
+
+/*******************************************************************************
+ * Perft function to find the node count of a certain depth
+ *
+ * @param board The board to calculate for
+ * @param depth The depth at which to search
+ * @return the number of nodes found
+ ******************************************************************************/
+uint64_t perft(Board* board, int depth)
+{
+    uint64_t nodes = 0;
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(board, cans);
+    int i;
+    for (i = 0; i < num_moves; ++i)
+    {
+        if (cans[i].move.src == 0x0ULL)
+            break;
+        Board temp_board;
+        memcpy(&temp_board, board, sizeof(Board));
+        move_piece(&temp_board, &cans[i].move);
+        printf("-------------------------------------\n");
+        printf("DEPTH: %d\n", depth);
+        printf("SRC: ");
+        print_location(cans[i].move.src);
+        printf("\n");
+        printf("-------------------------------------\n");
+        print_board(&temp_board);
+        printf("-------------------------------------\n");
+        nodes += get_nodes(board, cans[i], depth - 1);
+    }
+    return nodes;
+}
+
+/*******************************************************************************
+ * Recursive function that implements Perft function
+ ******************************************************************************/
+uint64_t get_nodes(Board* board, Cand cand, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand.move);
+    uint64_t nodes = 0;
+    if (depth == 0)
+        return 1ULL;
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(&temp_board, cans);
+    int i;
+    for (i = 0; i < num_moves; ++i)
+    {
+        if (cans[i].move.src == 0x0ULL)
+            break;
+        nodes += get_nodes(&temp_board, cans[i], depth - 1);
+    }
+    return nodes;
+}

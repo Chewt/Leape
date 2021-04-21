@@ -22,7 +22,7 @@ int main()
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
         {
-            char* s = "id name Leape\nid author Hayden Johnson\nuciok\n";
+            char* s = "id name Leape 1.0\nid author Hayden Johnson\nuciok\n";
             write(1, s, strlen(s));
         }
         else if (!strcmp(token, "isready"))
@@ -80,6 +80,13 @@ int main()
         else if (!strcmp(token, "quit"))
         {
             running = 0;
+        }
+        else if (!strcmp(token, "perft"))
+        {
+            token = strtok_r(NULL, " ", &saveptr);
+            int depth = atoi(token);
+            uint64_t nodes = perft(&board, depth);
+            printf("%ld nodes at %d depth\n", nodes, depth);
         }
         free(message);
     }

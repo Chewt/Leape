@@ -81,4 +81,7 @@ int will_be_check(Board* board, int color, Move* move);
 int is_stalemate(Board* board, int color);
 
 int bitScanForward(uint64_t bb);
+
+uint64_t perft(Board* board, int depth);
+uint64_t get_nodes(Board* board, Cand cand, int depth);
 #endif
