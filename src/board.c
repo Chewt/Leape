@@ -505,8 +505,7 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
             if (i / 8 > 1)
                 tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 - 1) * 8);
             moves |= tmp;
-            if (i == 3 && color == WHITE && !(pieces & gen_all_attacks(board,
-                            BLACK)))
+            if (i == 3 && color == WHITE)
             {
                 if ((board->castle & 0x02ULL) && !(friends &
                                 0x06ULL))
@@ -515,8 +514,7 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
                                 0x68ULL))
                     moves |= 0x20ULL;
             }
-            else if (i == 59 && color == BLACK && !(pieces &
-                        gen_all_attacks(board, WHITE)))
+            else if (i == 59 && color == BLACK)
             {
                 if ((board->castle & (0x02ULL << 7 * 8)) && 
                         ((friends & (0x06ULL << 7 * 8)) == 0))
@@ -797,10 +795,23 @@ int is_legal(Board* board, Move move)
     Board temp;
     memcpy(&temp, board, sizeof(Board));
     move_piece(&temp, &move);
+    uint64_t all_attacks;
     if(board->to_move == WHITE)
-        return !(temp.pieces[WHITE + KING] & gen_all_attacks(&temp, BLACK));
+    {
+        all_attacks = gen_all_attacks(&temp, BLACK);
+        if (move.piece == KING && (move.src & all_attacks) && (move.dest &
+                    (board->castle & 0xFFULL)))
+            return 0;
+        return !(temp.pieces[WHITE + KING] & all_attacks);
+    }
     else
-        return !(temp.pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE));
+    {
+        all_attacks = gen_all_attacks(&temp, WHITE);
+        if (move.piece == KING && (move.src & all_attacks) && (move.dest &
+                    (board->castle & (0xFFULL << (8 * 7)))))
+            return 0;
+        return !(temp.pieces[BLACK + KING] & all_attacks);
+    }
 }
 
 /*******************************************************************************
