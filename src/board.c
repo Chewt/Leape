@@ -505,7 +505,8 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
             if (i / 8 > 1)
                 tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 - 1) * 8);
             moves |= tmp;
-            if (i == 3 && color == WHITE)
+            if (i == 3 && color == WHITE && !(pieces & gen_all_attacks(board,
+                            BLACK)))
             {
                 if ((board->castle & 0x02ULL) && !(friends &
                                 0x06ULL))
@@ -514,7 +515,8 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
                                 0x68ULL))
                     moves |= 0x20ULL;
             }
-            else if (i == 59 && color == BLACK)
+            else if (i == 59 && color == BLACK && !(pieces &
+                        gen_all_attacks(board, WHITE)))
             {
                 if ((board->castle & (0x02ULL << 7 * 8)) && 
                         ((friends & (0x06ULL << 7 * 8)) == 0))
