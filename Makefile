@@ -5,7 +5,7 @@ SOURCES = $(wildcard $(SRCDIR)/*.c)
 OBJECTS = $(SOURCES:$(SRCDIR)%.c=$(OBJDIR)%.o)
 INCLUDES = $(SOURCES:$(SRCDIR)%.c=$(INCLUDEDIR)%.h)
 UNIDEPS = 
-CFLAGS = -I$(INCLUDEDIR) -O2 -Wall
+CFLAGS = -I$(INCLUDEDIR) -O2
 CC = gcc
 TARGET = leape
 
@@ -30,4 +30,4 @@ $(UNIDEPS):
 
 .PHONY: clean
 clean: 
-	rm -rf $(OBJDIR) /*.o $(TARGET)
+	rm -rf $(OBJDIR)/*.o $(TARGET)

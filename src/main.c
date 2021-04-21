@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <time.h>
 #include "board.h"
 #include "io.h"
@@ -17,7 +18,11 @@ int main()
     {
         char* message = NULL;
         size_t size = 0;
-        getline(&message, &size, input);
+        if (getline(&message, &size, input) == -1)
+        {
+            perror("Error reading from STDIN");
+            exit(-1);
+        }
         char* saveptr;
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
@@ -66,11 +71,16 @@ int main()
                 */
 
                 printf("to move: %d\n", board.to_move);
-                clock_t t = clock();
+                struct timeval timecheck;
+                long t;
+                gettimeofday(&timecheck, NULL);
+                t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec /
+                    1000;
                 Move bestmove = find_best_move(&board, atoi(token));
-                t = clock() - t;
-                double time_taken = ((double)t)/CLOCKS_PER_SEC;
-                printf("Time taken: %f\n", time_taken);
+                gettimeofday(&timecheck, NULL);
+                t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
+                double time_taken = (double)t / 1000;
+                printf("Time taken: %f seconds\n", time_taken);
                 write(1, "bestmove ", 9);
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
