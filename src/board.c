@@ -799,16 +799,22 @@ int is_legal(Board* board, Move move)
     if(board->to_move == WHITE)
     {
         all_attacks = gen_all_attacks(&temp, BLACK);
-        if (move.piece == KING && (move.src & all_attacks) && (move.dest &
-                    (board->castle & 0xFFULL)))
+        if (move.piece == KING && (0xEULL & all_attacks) && (move.dest &
+                    (board->castle & 0xFULL)))
+            return 0;
+        if (move.piece == KING && (0x38ULL & all_attacks) && (move.dest &
+                    (board->castle & 0xF0ULL)))
             return 0;
         return !(temp.pieces[WHITE + KING] & all_attacks);
     }
     else
     {
         all_attacks = gen_all_attacks(&temp, WHITE);
-        if (move.piece == KING && (move.src & all_attacks) && (move.dest &
-                    (board->castle & (0xFFULL << (8 * 7)))))
+        if (move.piece == KING && ((0xEULL << (8 * 7)) & all_attacks) &&
+                (move.dest & (board->castle & (0xFULL << (8 * 7)))))
+            return 0;
+        if (move.piece == KING && ((0x38ULL << (8 * 7)) & all_attacks) &&
+                (move.dest & (board->castle & (0xF0ULL << (8 * 7)))))
             return 0;
         return !(temp.pieces[BLACK + KING] & all_attacks);
     }
@@ -1069,14 +1075,6 @@ uint64_t perft(Board* board, int depth)
         Board temp_board;
         memcpy(&temp_board, board, sizeof(Board));
         move_piece(&temp_board, &cans[i].move);
-        printf("-------------------------------------\n");
-        printf("DEPTH: %d\n", depth);
-        printf("SRC: ");
-        print_location(cans[i].move.src);
-        printf("\n");
-        printf("-------------------------------------\n");
-        print_board(&temp_board);
-        printf("-------------------------------------\n");
         nodes += get_nodes(board, cans[i], depth - 1);
     }
     return nodes;
