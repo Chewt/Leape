@@ -70,7 +70,6 @@ int main()
                 print_board(&b);
                 */
 
-                printf("to move: %d\n", board.to_move);
                 struct timeval timecheck;
                 long t;
                 gettimeofday(&timecheck, NULL);
@@ -80,7 +79,9 @@ int main()
                 gettimeofday(&timecheck, NULL);
                 t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
                 double time_taken = (double)t / 1000;
-                printf("Time taken: %f seconds\n", time_taken);
+                char s[30];
+                sprintf(s, "Time taken: %.6f seconds\n", time_taken);
+                write(1, s, strlen(s));
                 write(1, "bestmove ", 9);
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
