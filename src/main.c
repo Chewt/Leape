@@ -6,9 +6,12 @@
 #include <time.h>
 #include "board.h"
 #include "io.h"
+#include "zobrist.h"
 
 int main()
 {
+    srand(12345);
+    zobrist_init();
     srand(time(0));
     int running = 1;
     FILE* input = fdopen(0, "r");

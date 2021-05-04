@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include "board.h"
 #include "io.h"
+#include "zobrist.h"
 
 /* Constants for piece attacks */
 const uint64_t RDIAG = 0x0102040810204080;
@@ -627,10 +628,16 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand.move);
+    if (is_hashed(&temp_board))
+        return get_hashed_value(&temp_board);
     if (is_stalemate(&temp_board, temp_board.to_move))
         return 0;
     if (depth == 0)
-        return get_board_value(&temp_board);
+    {
+        int bv = get_board_value(&temp_board);
+        set_hashed_value(board, bv);
+        return bv;
+    }
     else
     {
         Cand cans[MOVES_PER_POSITION];
@@ -640,6 +647,7 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
         int i;
         int board_value;
         int temp = 0;
+        int broken = 0;
         if (temp_board.to_move == BLACK)
             board_value = 300;
         else
@@ -655,7 +663,10 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
                     board_value = temp;
                 beta = (temp < beta) ? temp : beta;
                 if (beta <= alpha)
+                {
+                    broken = 1;
                     break;
+                }
             }
             else
             {
@@ -664,9 +675,14 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
                     board_value = temp;
                 alpha = (temp > alpha) ? temp : alpha;
                 if (beta <= alpha)
-                   break;
+                {
+                    broken = 1;
+                    break;
+                }
             }
         }
+        if (!broken)
+            set_hashed_value(&temp_board, board_value);
         return board_value;
     }
 }
@@ -840,6 +856,7 @@ Move find_best_move(Board* board, int depth)
     {
         if (j > 4)
             num_moves = 10;
+        zobrist_clear();
         for (i = 0; i < num_moves; ++i)
         {
             if (cands[i].move.src == 0x0ULL)
