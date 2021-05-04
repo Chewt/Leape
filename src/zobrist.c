@@ -16,24 +16,26 @@ void zobrist_init()
 
 void zobrist_clear()
 {
-    memset(zobrist_hash, -1, TABLE_SIZE * sizeof(int));
+    int i;
+    for (i = 0; i < TABLE_SIZE; ++i)
+        zobrist_hash[i] = DEFUALT_VALUE;
 }
 
 int is_hashed(Board* board)
 {
-    if (zobrist_hash[hash_position(board) % TABLE_SIZE] != -1)
+    if (zobrist_hash[board->hash % TABLE_SIZE] != DEFUALT_VALUE)
         return 1;
     return 0;
 }
 
 int get_hashed_value(Board* board)
 {
-    return zobrist_hash[hash_position(board) % TABLE_SIZE];
+    return zobrist_hash[board->hash % TABLE_SIZE];
 }
 
 void set_hashed_value(Board* board, int val)
 {
-    zobrist_hash[hash_position(board) % TABLE_SIZE] = val;
+    zobrist_hash[board->hash % TABLE_SIZE] = val;
 }
 
 uint64_t hash_position(Board* board)
@@ -53,16 +55,29 @@ uint64_t hash_position(Board* board)
         }
     }
     if (board->to_move == BLACK)
-        hash ^= random_nums[64 * 12];
+        hash ^= random_nums[BLACK_TO_MOVE];
     if (board->castle & 0xFULL)
-        hash ^= random_nums[64 * 12 + 1];
+        hash ^= random_nums[KW_CASTLE];
     if (board->castle & 0xF0ULL)
-        hash ^= random_nums[64 * 12 + 2];
+        hash ^= random_nums[QW_CASTLE];
     if (board->castle & (0xFULL << (8 * 7)))
-        hash ^= random_nums[64 * 12 + 3];
+        hash ^= random_nums[KB_CASTLE];
     if (board->castle & (0xF0ULL << (8 * 7)))
-        hash ^= random_nums[64 * 12 + 4];
+        hash ^= random_nums[QB_CASTLE];
     if (board->en_p)
-        hash ^= random_nums[64 * 12 + 5 + 7 - (bitScanForward(board->en_p))%8];
+        hash ^= random_nums[EN_P_BEGIN + 7 - (bitScanForward(board->en_p))%8];
     return hash;
+}
+
+void update_hash_move(Board* board, Move* move)
+{
+    int ind = bitScanForward(move->src);
+    board->hash ^= random_nums[64 * (move->piece + move->color) + ind];
+    ind = bitScanForward(move->dest);
+    board->hash ^= random_nums[64 * (move->piece + move->color) + ind];
+}
+
+void update_hash_direct(Board* board, int ind)
+{
+    board->hash ^= random_nums[ind];
 }

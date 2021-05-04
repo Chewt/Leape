@@ -113,6 +113,7 @@ void set_default(Board* board)
     board->en_p                   = 0x0000000000000000;
     board->to_move                = WHITE;
     update_combined_pos(board);
+    board->hash = hash_position(board);
 }
 
 /*******************************************************************************
@@ -160,27 +161,61 @@ void move_piece(Board* board, Move* move)
 {
     int i;
     for (i = 0; i < 12; ++i)
-        board->pieces[i] &= ~move->dest;
+    {
+        if (board->pieces[i] & move->dest)
+        {
+            board->pieces[i] &= ~move->dest;
+            int ind = bitScanForward(move->dest);
+            update_hash_direct(board, 64 * (move->piece + move->color) + ind);
+        }
+    }
     board->pieces[move->color + move->piece] ^= move->src;
     board->pieces[move->color + move->piece] |= move->dest;
+
     if (move->dest & board->en_p && move->piece == PAWN)
     {
         if (move->color == WHITE)
+        {
             board->pieces[BLACK + PAWN] &= ~(board->en_p >> 8);
+            update_hash_direct(board, 64 * (PAWN + BLACK) +
+                    bitScanForward(board->en_p >> 8));
+        }
         else
+        {
             board->pieces[WHITE + PAWN] &= ~(board->en_p << 8);
+            update_hash_direct(board, 64 * (PAWN + WHITE) +
+                    bitScanForward(board->en_p << 8));
+        }
     }
+
     if (board->to_move == WHITE)
         board->to_move = BLACK;
     else
         board->to_move = WHITE;
+    update_hash_direct(board, BLACK_TO_MOVE);
+
+    if (board->en_p)
+    {
+        update_hash_direct(board, EN_P_BEGIN + 7 -
+                (bitScanForward(board->en_p))%8);
+    }
+
     if (move->piece == PAWN && (move->dest & 0xFFULL << 24))
         board->en_p = move->dest << 8;
     else if (move->piece == PAWN && (move->dest & 0xFFULL << 32))
         board->en_p = move->dest >> 8;
     else
         board->en_p = 0x0ULL;
+
+    if (board->en_p)
+    {
+        update_hash_direct(board, EN_P_BEGIN + 7 -
+                (bitScanForward(board->en_p))%8);
+    }
+
+
     update_combined_pos(board);
+    update_hash_move(board, move);
 }
 
 /*******************************************************************************

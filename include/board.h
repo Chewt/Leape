@@ -29,6 +29,7 @@ typedef struct
     uint64_t en_p;
     uint64_t castle;
     int to_move;
+    uint64_t hash;
 } Board;
 
 typedef struct

@@ -82,7 +82,7 @@ int main()
                 gettimeofday(&timecheck, NULL);
                 t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
                 double time_taken = (double)t / 1000;
-                char s[30];
+                char s[100];
                 sprintf(s, "Time taken: %.6f seconds\n", time_taken);
                 write(1, s, strlen(s));
                 write(1, "bestmove ", 9);
