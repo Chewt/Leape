@@ -30,7 +30,7 @@ int main()
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
         {
-            char* s = "id name Leape 1.1\nid author Hayden Johnson\nuciok\n";
+            char* s = "id name Leape develop\nid author Hayden Johnson\nuciok\n";
             write(1, s, strlen(s));
         }
         else if (!strcmp(token, "isready"))

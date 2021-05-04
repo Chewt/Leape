@@ -609,12 +609,12 @@ void update_combined_pos(Board* board)
 uint64_t gen_all_attacks(Board* board, int color)
 {
     uint64_t moves = 0x0ULL;
-        moves |= gen_pawn_moves(board, color, board->pieces[color + PAWN]);
-        moves |= gen_bishop_moves(board, color, board->pieces[color + BISHOP]);
-        moves |= gen_knight_moves(board, color, board->pieces[color + KNIGHT]);
-        moves |= gen_rook_moves(board, color, board->pieces[color + ROOK]);
-        moves |= gen_queen_moves(board, color, board->pieces[color + QUEEN]);
-        moves |= gen_king_moves(board, color, board->pieces[color + KING]);
+    moves |= gen_pawn_moves(board, color, board->pieces[color + PAWN]);
+    moves |= gen_bishop_moves(board, color, board->pieces[color + BISHOP]);
+    moves |= gen_knight_moves(board, color, board->pieces[color + KNIGHT]);
+    moves |= gen_rook_moves(board, color, board->pieces[color + ROOK]);
+    moves |= gen_queen_moves(board, color, board->pieces[color + QUEEN]);
+    moves |= gen_king_moves(board, color, board->pieces[color + KING]);
     return moves;
 }
 
@@ -1087,7 +1087,7 @@ int is_stalemate(Board* board, int color)
         uint64_t katt = gen_king_moves(board, WHITE, board->pieces[WHITE +
                 KING]);
         for (i = 0; i < 6; ++i)
-            temp.pieces[i + BLACK] ^= katt;
+            temp.pieces[i + BLACK] &= ~katt;
         uint64_t all_attacks = gen_all_attacks(&temp, BLACK);
         if (!(board->pieces[WHITE + KING] & gen_all_attacks(board, BLACK)))
             if (!(gen_all_attacks(board, WHITE) & ~all_attacks))
@@ -1098,7 +1098,7 @@ int is_stalemate(Board* board, int color)
         uint64_t katt = gen_king_moves(board, BLACK, board->pieces[BLACK +
                 KING]);
         for (i = 0; i < 6; ++i)
-            temp.pieces[i + WHITE] ^= katt;
+            temp.pieces[i + WHITE] &= ~katt;
         uint64_t all_attacks = gen_all_attacks(&temp, WHITE);
         if (!(board->pieces[BLACK + KING] & gen_all_attacks(board, WHITE)))
             if (!(gen_all_attacks(board, BLACK) & ~all_attacks))
