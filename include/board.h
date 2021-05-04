@@ -74,9 +74,14 @@ int get_board_value(Board* board);
 int extract_moves(Board* board, int color, uint64_t src, Cand* movearr);
 int is_legal(Board* board, Move move);
 void apply_heuristics(Board* board, Cand* cand);
-int get_piece_value(Board* board, int color, uint64_t pieces);
+int get_piece_value(Board* board, int color, uint64_t piece);
 int is_checkmate(Board* board, int color);
 int will_be_checkmate(Board* board, int color, Move* move);
+int will_be_check(Board* board, int color, Move* move);
+int is_stalemate(Board* board, int color);
 
 int bitScanForward(uint64_t bb);
+
+uint64_t perft(Board* board, int depth);
+uint64_t get_nodes(Board* board, Cand cand, int depth);
 #endif

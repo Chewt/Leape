@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <time.h>
 #include "board.h"
 #include "io.h"
@@ -17,12 +18,16 @@ int main()
     {
         char* message = NULL;
         size_t size = 0;
-        getline(&message, &size, input);
+        if (getline(&message, &size, input) == -1)
+        {
+            perror("Error reading from STDIN");
+            exit(-1);
+        }
         char* saveptr;
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
         {
-            char* s = "id name Leape\nid author Hayden Johnson\nuciok\n";
+            char* s = "id name Leape 1.1\nid author Hayden Johnson\nuciok\n";
             write(1, s, strlen(s));
         }
         else if (!strcmp(token, "isready"))
@@ -47,23 +52,36 @@ int main()
             if (token && !strcmp(token, "depth"))
             {
                 token = strtok_r(NULL, " ", &saveptr);
-                print_board(&board);
 
                 /*
+                if (is_stalemate(&board, board.to_move))
+                    printf("Is stalemate!\n");
+                else
+                    printf("Is not stalemate!\n");
+                if (is_checkmate(&board, board.to_move))
+                    printf("Is checkmate!\n");
+                else
+                    printf("Is not checkmate!\n");
+                //print_board(&board);
+
                 Board b;
                 memset(&b, 0, sizeof(Board));
                 b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
                 print_board(&b);
-                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, WHITE, board.pieces[WHITE + PAWN]);
-                print_board(&b);
                 */
 
-                printf("to move: %d\n", board.to_move);
-                clock_t t = clock();
+                struct timeval timecheck;
+                long t;
+                gettimeofday(&timecheck, NULL);
+                t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec /
+                    1000;
                 Move bestmove = find_best_move(&board, atoi(token));
-                t = clock() - t;
-                double time_taken = ((double)t)/CLOCKS_PER_SEC;
-                printf("Time taken: %f\n", time_taken);
+                gettimeofday(&timecheck, NULL);
+                t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
+                double time_taken = (double)t / 1000;
+                char s[30];
+                sprintf(s, "Time taken: %.6f seconds\n", time_taken);
+                write(1, s, strlen(s));
                 write(1, "bestmove ", 9);
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
@@ -73,6 +91,13 @@ int main()
         else if (!strcmp(token, "quit"))
         {
             running = 0;
+        }
+        else if (!strcmp(token, "perft"))
+        {
+            token = strtok_r(NULL, " ", &saveptr);
+            int depth = atoi(token);
+            uint64_t nodes = perft(&board, depth);
+            printf("%ld nodes at %d depth\n", nodes, depth);
         }
         free(message);
     }

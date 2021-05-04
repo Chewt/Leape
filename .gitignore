@@ -6,3 +6,4 @@ tags
 *.txt
 leape
 **/*.swp
+.gdb_history

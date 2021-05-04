@@ -122,7 +122,8 @@ void load_fen(Board* board, char* fen)
     if (!strcmp(token, "-"))
         board->en_p = 0x0ULL;
     else
-        board->en_p = 0x01ULL << ((token[0] - 'a') + ('8' - token[1]) * 8);
+        board->en_p = 0x01ULL << (63 - ((token[0] - 'a') + 
+                    ('8' - token[1]) * 8));
     update_combined_pos(board);
     free(fen_copy);
 }
