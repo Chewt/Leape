@@ -6,9 +6,12 @@
 #include <time.h>
 #include "board.h"
 #include "io.h"
+#include "zobrist.h"
 
 int main()
 {
+    srand(12345);
+    zobrist_init();
     srand(time(0));
     int running = 1;
     FILE* input = fdopen(0, "r");
@@ -27,7 +30,7 @@ int main()
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
         {
-            char* s = "id name Leape 1.1\nid author Hayden Johnson\nuciok\n";
+            char* s = "id name Leape develop\nid author Hayden Johnson\nuciok\n";
             write(1, s, strlen(s));
         }
         else if (!strcmp(token, "isready"))
@@ -79,7 +82,7 @@ int main()
                 gettimeofday(&timecheck, NULL);
                 t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
                 double time_taken = (double)t / 1000;
-                char s[30];
+                char s[100];
                 sprintf(s, "Time taken: %.6f seconds\n", time_taken);
                 write(1, s, strlen(s));
                 write(1, "bestmove ", 9);
