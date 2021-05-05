@@ -166,13 +166,14 @@ void move_piece(Board* board, Move* move)
         {
             board->pieces[i] &= ~move->dest;
             int ind = bitScanForward(move->dest);
-            update_hash_direct(board, 64 * (move->piece + move->color) + ind);
+            update_hash_direct(board, 64 * i + ind);
         }
     }
     board->pieces[move->color + move->piece] ^= move->src;
     board->pieces[move->color + move->piece] |= move->dest;
+    update_hash_move(board, move);
 
-    if (move->dest & board->en_p && move->piece == PAWN)
+    if (board->en_p && (move->dest & board->en_p) && (move->piece == PAWN))
     {
         if (move->color == WHITE)
         {
@@ -197,25 +198,24 @@ void move_piece(Board* board, Move* move)
     if (board->en_p)
     {
         update_hash_direct(board, EN_P_BEGIN + 7 -
-                (bitScanForward(board->en_p))%8);
+                ((bitScanForward(board->en_p))%8));
+        board->en_p = 0x0ULL;
     }
 
-    if (move->piece == PAWN && (move->dest & 0xFFULL << 24))
-        board->en_p = move->dest << 8;
-    else if (move->piece == PAWN && (move->dest & 0xFFULL << 32))
+    if (move->color == WHITE && move->piece == PAWN && 
+            (move->dest & 0xFFULL << 24))
         board->en_p = move->dest >> 8;
-    else
-        board->en_p = 0x0ULL;
+    else if (move->color == BLACK && move->piece == PAWN && 
+            (move->dest & 0xFFULL << 32))
+        board->en_p = move->dest << 8;
 
     if (board->en_p)
     {
         update_hash_direct(board, EN_P_BEGIN + 7 -
-                (bitScanForward(board->en_p))%8);
+                ((bitScanForward(board->en_p))%8));
     }
 
-
     update_combined_pos(board);
-    update_hash_move(board, move);
 }
 
 /*******************************************************************************
@@ -584,18 +584,45 @@ void update_combined_pos(Board* board)
         board->all_white |= board->pieces[WHITE + i];
         board->all_black |= board->pieces[BLACK + i];
     }
-    if (!(board->pieces[WHITE + KING] & 0x08ULL))
+    if (!(board->pieces[WHITE + KING] & 0x08ULL) && (board->castle & 0xFFULL))
+    {
+        if (board->castle & 0xFULL)
+            update_hash_direct(board, KW_CASTLE);
+        if (board->castle & 0xF0ULL)
+            update_hash_direct(board, QW_CASTLE);
         board->castle &= ~0xFFULL;
-    if (!(board->pieces[BLACK + KING] & (0x08ULL << 56)))
+    }
+    if (!(board->pieces[BLACK + KING] & (0x08ULL << 56)) && (board->castle &
+                (0xFFULL << 56)))
+    {
+        if (board->castle & (0xFULL << (8 * 7)))
+            update_hash_direct(board, KB_CASTLE);
+        if (board->castle & (0xF0ULL << (8 * 7)))
+            update_hash_direct(board, QB_CASTLE);
         board->castle &= ~(0xFFULL << 56);
-    if (!(board->pieces[WHITE + ROOK] & 0x01ULL))
+    }
+    if (!(board->pieces[WHITE + ROOK] & 0x01ULL) && (board->castle & 0x0FULL))
+    {
         board->castle &= ~(0x0FULL);
-    if (!(board->pieces[WHITE + ROOK] & 0x80ULL))
+        update_hash_direct(board, KW_CASTLE);
+    }
+    if (!(board->pieces[WHITE + ROOK] & 0x80ULL) && (board->castle & 0xF0ULL))
+    {
         board->castle &= ~(0xF0ULL);
-    if (!(board->pieces[BLACK + ROOK] & (0x01ULL << 56)))
+        update_hash_direct(board, QW_CASTLE);
+    }
+    if (!(board->pieces[BLACK + ROOK] & (0x01ULL << 56)) && (board->castle &
+                (0x0FULL << 56)))
+    {
         board->castle &= ~(0x0FULL << 56);
-    if (!(board->pieces[BLACK + ROOK] & (0x80ULL << 56)))
+        update_hash_direct(board, KB_CASTLE);
+    }
+    if (!(board->pieces[BLACK + ROOK] & (0x80ULL << 56)) && (board->castle &
+                (0xF0ULL << 56)))
+    {
         board->castle &= ~(0xF0ULL << 56);
+        update_hash_direct(board, QB_CASTLE);
+    }
 }
 
 /*******************************************************************************

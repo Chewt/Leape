@@ -65,7 +65,7 @@ uint64_t hash_position(Board* board)
     if (board->castle & (0xF0ULL << (8 * 7)))
         hash ^= random_nums[QB_CASTLE];
     if (board->en_p)
-        hash ^= random_nums[EN_P_BEGIN + 7 - (bitScanForward(board->en_p))%8];
+        hash ^= random_nums[EN_P_BEGIN + 7 - ((bitScanForward(board->en_p))%8)];
     return hash;
 }
 
