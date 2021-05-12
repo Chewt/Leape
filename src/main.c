@@ -108,8 +108,10 @@ int main()
         {
             token = strtok_r(NULL, " ", &saveptr);
             int depth = atoi(token);
-            uint64_t nodes = perft(&board, depth);
-            printf("%ld nodes at %d depth\n", nodes, depth);
+            Pres pres = perft(&board, depth);
+            printf("%ld nodes at %d depth\n", pres.nodes, depth);
+            printf("%ld captures, %ld en pessants\n", pres.caps, pres.eps);
+            printf("%ld checks, %ld checkmates\n", pres.checks, pres.checkmates);
         }
         free(message);
     }

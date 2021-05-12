@@ -127,7 +127,7 @@ void set_default(Board* board)
 uint64_t gen_shift(uint64_t src, int count)
 {
     if (bitScanReverse(src) + count < 0 || bitScanForward(src) + count > 63)
-        return 0ULL;
+        return EMPTY;
     if (count < 0)
         return src >> -count;
     else
@@ -199,14 +199,14 @@ void move_piece(Board* board, Move* move)
     {
         update_hash_direct(board, EN_P_BEGIN + 7 -
                 ((bitScanForward(board->en_p))%8));
-        board->en_p = 0x0ULL;
+        board->en_p = EMPTY;
     }
 
     if (move->color == WHITE && move->piece == PAWN && 
-            (move->dest & 0xFFULL << 24))
+            (move->dest & RANK_4) && (move->src & RANK_2))
         board->en_p = move->dest >> 8;
     else if (move->color == BLACK && move->piece == PAWN && 
-            (move->dest & 0xFFULL << 32))
+            (move->dest & RANK_5) && (move->src & RANK_7))
         board->en_p = move->dest << 8;
 
     if (board->en_p)
@@ -228,9 +228,9 @@ void move_piece(Board* board, Move* move)
  ******************************************************************************/
 uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t moves = 0ULL;
-    uint64_t friends = 0;
-    uint64_t enemies = 0;
+    uint64_t moves = EMPTY;
+    uint64_t friends = EMPTY;
+    uint64_t enemies = EMPTY;
     if (color == WHITE)
     {
         friends = board->all_white;
@@ -252,7 +252,7 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
     {
         if ((0x1ULL << i) & pieces)
         {
-            uint64_t tmp = 0ULL;
+            uint64_t tmp = EMPTY;
             if (i / 8 == 1 && !((0x1ULL << (i + 8)) & (friends | enemies)) &&
                     color == WHITE)
                 tmp = gen_shift(0x1ULL, i + 16);
@@ -290,9 +290,9 @@ uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces)
  ******************************************************************************/
 uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t moves = 0;
-    uint64_t friends = 0;
-    uint64_t enemies = 0;
+    uint64_t moves = EMPTY;
+    uint64_t friends = EMPTY;
+    uint64_t enemies = EMPTY;
     if (color == WHITE)
     {
         friends = board->all_white;
@@ -379,9 +379,9 @@ uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces)
  ******************************************************************************/
 uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t moves = 0;
-    uint64_t friends = 0;
-    uint64_t enemies = 0;
+    uint64_t moves   = EMPTY;
+    uint64_t friends = EMPTY;
+    uint64_t enemies = EMPTY;
     if (color == WHITE)
     {
         friends = board->all_white;
@@ -410,7 +410,7 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
             tmp = gen_shift(VERT, 8 + i);
             if (intersection)
                 tmp ^= gen_shift(VERT, lsbi + 8 + capt);
-            tmp &= gen_shift(~0ULL, i + 8);
+            tmp &= gen_shift(~EMPTY, i + 8);
             if (i / 8 < 7)
                 moves |= tmp;
 
@@ -434,7 +434,7 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
             tmp = gen_shift(HORZ, 1 + i);
             if (intersection)
                 tmp ^= gen_shift(HORZ, 1 + lsbi + capt);
-            tmp &= 0xFFULL << (i / 8) * 8;
+            tmp &= RANK_1 << (i / 8) * 8;
             moves |= tmp;
 
             /* Generate east moves */
@@ -446,7 +446,7 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
             tmp = gen_shift(HORZ, -8 + i);
             if (intersection)
                 tmp ^= gen_shift(HORZ, -8 + lsbi + capt);
-            tmp &= 0xFFULL << (i / 8) * 8;
+            tmp &= RANK_1 << (i / 8) * 8;
             moves |= tmp;
         }
         if (pieces >> i == 1)
@@ -465,7 +465,7 @@ uint64_t gen_rook_moves(Board* board, int color, uint64_t pieces)
  ******************************************************************************/
 uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t moves = 0;
+    uint64_t moves = EMPTY;
     moves |= gen_rook_moves(board, color, pieces);
     moves |= gen_bishop_moves(board, color, pieces);
     return moves;
@@ -481,8 +481,8 @@ uint64_t gen_queen_moves(Board* board, int color, uint64_t pieces)
  ******************************************************************************/
 uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t moves = 0ULL;
-    uint64_t friends = 0;
+    uint64_t moves   = EMPTY;
+    uint64_t friends = EMPTY;
     if (color == WHITE)
         friends = board->all_white;
     else
@@ -492,15 +492,15 @@ uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
     {
         if ((0x1ULL << i) & pieces)
         {
-            uint64_t tmp = 0ULL;
+            uint64_t tmp = EMPTY;
             tmp |= gen_shift(NMOV, i - 16 - 2);
             tmp &= vert_mask((i % 8) + 3);
             if ((i % 8) - 3 > 0)
                 tmp &= ~vert_mask((i % 8) - 2);
             if (i / 8 < 5)
-                tmp &= ~gen_shift(~(0ULL), (i / 8 + 3) * 8);
+                tmp &= ~gen_shift(~(EMPTY), (i / 8 + 3) * 8);
             if (i / 8 > 2)
-                tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 - 2) * 8);
+                tmp &= ~gen_shift(~(EMPTY), -64 + (i / 8 - 2) * 8);
             moves |= tmp;
         }
         if (pieces >> i == 1)
@@ -520,8 +520,8 @@ uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces)
  ******************************************************************************/
 uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
 {
-    uint64_t moves = 0ULL;
-    uint64_t friends = 0ULL;
+    uint64_t moves   = EMPTY;
+    uint64_t friends = EMPTY;
     if (color == WHITE)
         friends = board->all_white;
     else
@@ -531,15 +531,15 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
     {
         if ((0x1ULL << i) & pieces)
         {
-            uint64_t tmp = 0x0ULL;
+            uint64_t tmp = EMPTY;
             tmp |= gen_shift(KMOV, i - 8 - 1);
             tmp &= vert_mask((i % 8) + 2);
             if ((i % 8) - 1 > 0)
                 tmp &= ~vert_mask((i % 8) - 1);
             if (i / 8 < 5)
-                tmp &= ~gen_shift(~(0ULL), (i / 8 + 2) * 8);
+                tmp &= ~gen_shift(~(EMPTY), (i / 8 + 2) * 8);
             if (i / 8 > 1)
-                tmp &= ~gen_shift(~(0ULL), -64 + (i / 8 - 1) * 8);
+                tmp &= ~gen_shift(~(EMPTY), -64 + (i / 8 - 1) * 8);
             moves |= tmp;
             if (i == 3 && color == WHITE)
             {
@@ -577,29 +577,29 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
 void update_combined_pos(Board* board)
 {
     int i;
-    board->all_white = 0x0ULL;
-    board->all_black = 0x0ULL;
+    board->all_white = EMPTY;
+    board->all_black = EMPTY;
     for (i = 0; i < 6; ++i)
     {
         board->all_white |= board->pieces[WHITE + i];
         board->all_black |= board->pieces[BLACK + i];
     }
-    if (!(board->pieces[WHITE + KING] & 0x08ULL) && (board->castle & 0xFFULL))
+    if (!(board->pieces[WHITE + KING] & 0x08ULL) && (board->castle & RANK_1))
     {
         if (board->castle & 0xFULL)
             update_hash_direct(board, KW_CASTLE);
         if (board->castle & 0xF0ULL)
             update_hash_direct(board, QW_CASTLE);
-        board->castle &= ~0xFFULL;
+        board->castle &= ~RANK_1;
     }
     if (!(board->pieces[BLACK + KING] & (0x08ULL << 56)) && (board->castle &
-                (0xFFULL << 56)))
+                RANK_7))
     {
         if (board->castle & (0xFULL << (8 * 7)))
             update_hash_direct(board, KB_CASTLE);
         if (board->castle & (0xF0ULL << (8 * 7)))
             update_hash_direct(board, QB_CASTLE);
-        board->castle &= ~(0xFFULL << 56);
+        board->castle &= ~RANK_7;
     }
     if (!(board->pieces[WHITE + ROOK] & 0x01ULL) && (board->castle & 0x0FULL))
     {
@@ -623,6 +623,9 @@ void update_combined_pos(Board* board)
         board->castle &= ~(0xF0ULL << 56);
         update_hash_direct(board, QB_CASTLE);
     }
+
+    board->black_attacks = gen_all_attacks(board, BLACK);
+    board->white_attacks = gen_all_attacks(board, WHITE);
 }
 
 /*******************************************************************************
@@ -635,7 +638,7 @@ void update_combined_pos(Board* board)
  ******************************************************************************/
 uint64_t gen_all_attacks(Board* board, int color)
 {
-    uint64_t moves = 0x0ULL;
+    uint64_t moves = EMPTY;
     moves |= gen_pawn_moves(board, color, board->pieces[color + PAWN]);
     moves |= gen_bishop_moves(board, color, board->pieces[color + BISHOP]);
     moves |= gen_knight_moves(board, color, board->pieces[color + KNIGHT]);
@@ -657,7 +660,7 @@ int gen_all_moves(Board* board, Cand* movearr)
 {
     memset(movearr, 0, sizeof(Cand) * MOVES_PER_POSITION);
     int ind = 0;
-    uint64_t pieces = 0x0ULL;
+    uint64_t pieces = EMPTY;
     if (board->to_move == WHITE)
         pieces = board->all_white;
     else
@@ -716,7 +719,7 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
             board_value = -300;
         for (i = 0; i < num_moves; ++i)
         {
-            if (cans[i].move.src == 0x0ULL)
+            if (cans[i].move.src == EMPTY)
                 break;
             if (temp_board.to_move == BLACK)
             {
@@ -806,7 +809,7 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
     //printf("0x%016lX\n", src);
     int count = 0;
     int piece = -1;
-    uint64_t moves = 0x0ULL;
+    uint64_t moves = EMPTY;
     if (src & board->pieces[color + PAWN])
     {
         moves = gen_pawn_moves(board, color, src);
@@ -921,7 +924,7 @@ Move find_best_move(Board* board, int depth)
         zobrist_clear();
         for (i = 0; i < num_moves; ++i)
         {
-            if (cands[i].move.src == 0x0ULL)
+            if (cands[i].move.src == EMPTY)
                 break;
             int temp_weight = eval_prune(board, cands[i], -300, 300, j);
             if (board->to_move == BLACK)
@@ -1031,6 +1034,8 @@ int is_checkmate(Board* board, int color)
     int i;
     if (color == WHITE)
     {
+        if (!(board->pieces[WHITE + KING] & board->black_attacks))
+            return 0;
         uint64_t katt = gen_king_moves(board, WHITE, board->pieces[WHITE +
                 KING]);
         for (i = 0; i < 6; ++i)
@@ -1043,6 +1048,8 @@ int is_checkmate(Board* board, int color)
     }
     else if (color == BLACK)
     {
+        if (!(board->pieces[BLACK + KING] & board->white_attacks))
+            return 0;
         uint64_t katt = gen_king_moves(board, BLACK, board->pieces[BLACK +
                 KING]);
         for (i = 0; i < 6; ++i)
@@ -1141,43 +1148,70 @@ int is_stalemate(Board* board, int color)
  * @param depth The depth at which to search
  * @return the number of nodes found
  ******************************************************************************/
-uint64_t perft(Board* board, int depth)
+Pres perft(Board* board, int depth)
 {
     uint64_t nodes = 0;
+    Pres pres;
+    memset(&pres, 0, sizeof(Pres));
     Cand cans[MOVES_PER_POSITION];
     int num_moves = gen_all_moves(board, cans);
     int i;
     for (i = 0; i < num_moves; ++i)
     {
-        if (cans[i].move.src == 0x0ULL)
+        if (cans[i].move.src == EMPTY)
             break;
         Board temp_board;
         memcpy(&temp_board, board, sizeof(Board));
         move_piece(&temp_board, &cans[i].move);
-        nodes += get_nodes(board, cans[i], depth - 1);
+        get_nodes(board, &(cans[i]), depth - 1, &pres);
     }
-    return nodes;
+    return pres;
 }
 
 /*******************************************************************************
  * Recursive function that implements Perft function
  ******************************************************************************/
-uint64_t get_nodes(Board* board, Cand cand, int depth)
+void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
 {
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
-    move_piece(&temp_board, &cand.move);
-    uint64_t nodes = 0;
     if (depth == 0)
-        return 1ULL;
+    {
+        if (board->to_move == BLACK && (board->all_white & cand->move.dest))
+            pres->caps++;
+        else if (board->to_move == WHITE && (board->all_black & cand->move.dest))
+            pres->caps++;
+        if ((board->en_p & cand->move.dest) && cand->move.piece == PAWN)
+        {
+            pres->caps++;
+            pres->eps++;
+        }
+        pres->nodes++;
+    }
+    move_piece(&temp_board, &cand->move);
+    if (depth == 0)
+    {
+        if (temp_board.to_move == BLACK && (temp_board.pieces[BLACK + KING] &
+                gen_all_attacks(&temp_board, WHITE)))
+            pres->checks++;
+        if (temp_board.to_move == WHITE && (temp_board.pieces[WHITE + KING] &
+                gen_all_attacks(&temp_board, BLACK)))
+            pres->checks++;
+        if (is_checkmate(&temp_board, temp_board.to_move))
+        {
+            pres->checkmates++;
+            print_board(&temp_board);
+        }
+
+        return;
+    }
     Cand cans[MOVES_PER_POSITION];
     int num_moves = gen_all_moves(&temp_board, cans);
     int i;
     for (i = 0; i < num_moves; ++i)
     {
-        if (cans[i].move.src == 0x0ULL)
+        if (cans[i].move.src == EMPTY)
             break;
-        nodes += get_nodes(&temp_board, cans[i], depth - 1);
+        get_nodes(&temp_board, &(cans[i]), depth - 1, pres);
     }
-    return nodes;
 }
