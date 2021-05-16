@@ -40,12 +40,14 @@ int main()
         if(!strcmp(token, "uci"))
         {
             char* s = "id name Leape develop\nid author Hayden Johnson\nuciok\n";
-            write(1, s, strlen(s));
+            if (write(1, s, strlen(s)) == -1)
+                perror("from main");
         }
         else if (!strcmp(token, "isready"))
         {
             char* s = "readyok\n";
-            write(1, s, strlen(s));
+            if (write(1, s, strlen(s)) == -1)
+                perror("from main");
         }
         else
             token = strtok_r(message, " ", &saveptr);
@@ -93,11 +95,14 @@ int main()
                 double time_taken = (double)t / 1000;
                 char s[100];
                 sprintf(s, "Time taken: %.6f seconds\n", time_taken);
-                write(1, s, strlen(s));
-                write(1, "bestmove ", 9);
+                if(write(1, s, strlen(s)) == -1)
+                    perror("from main");
+                if(write(1, "bestmove ", 9) == -1)
+                    perror("from main");
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
-                write(1, "\n", 1);
+                if(write(1, "\n", 1) == -1)
+                    perror("from main");
             }
         }
         else if (!strcmp(token, "quit"))
