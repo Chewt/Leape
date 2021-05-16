@@ -5,6 +5,17 @@
 
 #define MOVES_PER_POSITION 218
 
+#define RANK_1 0x00000000000000FFULL
+#define RANK_2 0x000000000000FF00ULL
+#define RANK_3 0x0000000000FF0000ULL
+#define RANK_4 0x00000000FF000000ULL
+#define RANK_5 0x000000FF00000000ULL
+#define RANK_6 0x0000FF0000000000ULL
+#define RANK_7 0x00FF000000000000ULL
+#define RANK_8 0xFF00000000000000ULL
+
+#define EMPTY  0x0000000000000000ULL
+
 enum piece_type
 {
     PAWN = 0,
@@ -26,6 +37,8 @@ typedef struct
     uint64_t pieces[12];
     uint64_t all_white;
     uint64_t all_black;
+    uint64_t black_attacks;
+    uint64_t white_attacks;
     uint64_t en_p;
     uint64_t castle;
     int to_move;
@@ -45,6 +58,15 @@ typedef struct
     Move move;
     int weight;
 } Cand;
+
+typedef struct
+{
+    uint64_t nodes;
+    uint64_t caps;
+    uint64_t eps;
+    uint64_t checks;
+    uint64_t checkmates;
+} Pres;
 
 extern const uint64_t RDIAG;
 extern const uint64_t RDIAG;
@@ -83,6 +105,6 @@ int is_stalemate(Board* board, int color);
 
 int bitScanForward(uint64_t bb);
 
-uint64_t perft(Board* board, int depth);
-uint64_t get_nodes(Board* board, Cand cand, int depth);
+Pres perft(Board* board, int depth);
+void get_nodes(Board* board, Cand* cand, int depth, Pres* pres);
 #endif
