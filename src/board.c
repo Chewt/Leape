@@ -623,9 +623,6 @@ void update_combined_pos(Board* board)
         board->castle &= ~(0xF0ULL << 56);
         update_hash_direct(board, QB_CASTLE);
     }
-
-    board->black_attacks = gen_all_attacks(board, BLACK);
-    board->white_attacks = gen_all_attacks(board, WHITE);
 }
 
 /*******************************************************************************
@@ -659,7 +656,7 @@ uint64_t gen_all_attacks(Board* board, int color)
 int gen_all_moves(Board* board, Cand* movearr)
 {
     memset(movearr, 0, sizeof(Cand) * MOVES_PER_POSITION);
-    int ind = 0;
+    int nmoves = 0;
     uint64_t pieces = EMPTY;
     if (board->to_move == WHITE)
         pieces = board->all_white;
@@ -668,11 +665,11 @@ int gen_all_moves(Board* board, Cand* movearr)
     uint64_t lsb = pieces & -pieces;
     while (lsb)
     {
-        ind += extract_moves(board, board->to_move, lsb, movearr + ind);
+        nmoves += extract_moves(board, board->to_move, lsb, movearr + nmoves);
         pieces &= ~lsb;
         lsb = pieces & -pieces;
     }
-    return ind;
+    return nmoves;
 }
 
 /*******************************************************************************
@@ -1029,38 +1026,67 @@ int get_piece_value(Board* board, int color, uint64_t piece)
  ******************************************************************************/
 int is_checkmate(Board* board, int color)
 {
-    Board temp;
-    memcpy(&temp, board, sizeof(Board));
+    int ecolor = (color == BLACK) ? WHITE : BLACK;
+    if (!(board->pieces[KING + color] & gen_all_attacks(board, ecolor)))
+        return 0;
+
     int i;
-    if (color == WHITE)
+    for (i = 0; i < 6; ++i)
     {
-        if (!(board->pieces[WHITE + KING] & board->black_attacks))
-            return 0;
-        uint64_t katt = gen_king_moves(board, WHITE, board->pieces[WHITE +
-                KING]);
-        for (i = 0; i < 6; ++i)
-            temp.pieces[i + BLACK] ^= katt;
-        uint64_t all_attacks = gen_all_attacks(&temp, BLACK);
-        if (board->pieces[WHITE + KING] & all_attacks)
-            if (!(gen_king_moves(board, WHITE, board->pieces[WHITE + KING]) &
-                        ~all_attacks))
-                return 1;
+        uint64_t src = board->pieces[i + color];
+        uint64_t lsb_src = src & -src;
+        while (lsb_src)
+        {
+            uint64_t moves = EMPTY;
+            int piece = -1;
+            if (i == PAWN)
+            {
+                moves = gen_pawn_moves(board, color, lsb_src);
+                piece = PAWN;
+            }
+            else if (i == BISHOP)
+            {
+                moves = gen_bishop_moves(board, color, lsb_src);
+                piece = BISHOP;
+            }
+            else if (i == KNIGHT)
+            {
+                moves = gen_knight_moves(board, color, lsb_src);
+                piece = KNIGHT;
+            }
+            else if (i == ROOK)
+            {
+                moves = gen_rook_moves(board, color, lsb_src);
+                piece = ROOK;
+            }
+            else if (i == QUEEN)
+            {
+                moves = gen_queen_moves(board, color, lsb_src);
+                piece = QUEEN;
+            }
+            else if (i == KING)
+            {
+                moves = gen_king_moves(board, color, lsb_src);
+                piece = KING;
+            }
+            uint64_t lsb = moves & -moves;
+            while (lsb)
+            {
+                Move temp_move;
+                temp_move.src = lsb_src;
+                temp_move.dest = lsb;
+                temp_move.piece = piece;
+                temp_move.color = color;
+                if (is_legal(board, temp_move))
+                    return 0;
+                moves &= ~lsb;
+                lsb = moves & -moves;
+            }
+            src &= ~lsb_src;
+            lsb_src = src & -src;
+        }
     }
-    else if (color == BLACK)
-    {
-        if (!(board->pieces[BLACK + KING] & board->white_attacks))
-            return 0;
-        uint64_t katt = gen_king_moves(board, BLACK, board->pieces[BLACK +
-                KING]);
-        for (i = 0; i < 6; ++i)
-            temp.pieces[i + WHITE] ^= katt;
-        uint64_t all_attacks = gen_all_attacks(&temp, WHITE);
-        if (board->pieces[BLACK + KING] & all_attacks)
-            if (!(gen_king_moves(board, BLACK, board->pieces[BLACK + KING]) &
-                        ~all_attacks))
-                return 1;
-    }
-    return 0;
+    return 1;
 }
 
 /*******************************************************************************
@@ -1200,7 +1226,7 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         if (is_checkmate(&temp_board, temp_board.to_move))
         {
             pres->checkmates++;
-            print_board(&temp_board);
+            //print_board(&temp_board);
         }
 
         return;
