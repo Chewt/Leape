@@ -35,6 +35,8 @@ int main()
             perror("Error reading from STDIN");
             exit(-1);
         }
+        if (strlen(message) == 1)
+            continue;
         char* saveptr;
         char* token = strtok_r(message, "\n", &saveptr);
         if(!strcmp(token, "uci"))
