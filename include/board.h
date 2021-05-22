@@ -68,6 +68,7 @@ typedef struct
     uint64_t checks;
     uint64_t checkmates;
     uint64_t castles;
+    uint64_t proms;
 } Pres;
 
 extern const uint64_t RDIAG;

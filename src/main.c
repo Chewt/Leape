@@ -105,6 +105,26 @@ int main()
                     perror("from main");
                 print_location(bestmove.src);
                 print_location(bestmove.dest);
+                if (bestmove.promote == BISHOP)
+                {
+                    if(write(1, "b", 1) == -1)
+                        perror("from main");
+                }
+                else if (bestmove.promote == KNIGHT)
+                {
+                    if(write(1, "n", 1) == -1)
+                        perror("from main");
+                }
+                else if (bestmove.promote == ROOK)
+                {
+                    if(write(1, "r", 1) == -1)
+                        perror("from main");
+                }
+                else if (bestmove.promote == QUEEN)
+                {
+                    if(write(1, "q", 1) == -1)
+                        perror("from main");
+                }
                 if(write(1, "\n", 1) == -1)
                     perror("from main");
             }
@@ -121,7 +141,7 @@ int main()
             printf("%ld nodes at %d depth\n", pres.nodes, depth);
             printf("%ld captures, %ld en pessants\n", pres.caps, pres.eps);
             printf("%ld checks, %ld checkmates\n", pres.checks, pres.checkmates);
-            printf("%ld castles\n", pres.castles);
+            printf("%ld castles, %ld promotions\n", pres.castles, pres.proms);
         }
         free(message);
     }

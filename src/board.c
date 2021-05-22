@@ -173,7 +173,6 @@ void move_piece(Board* board, Move* move)
     board->pieces[move->color + move->piece] ^= move->dest;
     update_hash_move(board, move);
 
-    /*
     if (move->promote != -1)
     {
         board->pieces[move->color + move->piece] ^= move->dest;
@@ -183,7 +182,6 @@ void move_piece(Board* board, Move* move)
         update_hash_direct(board, 64 * (move->color + move->promote) +
                 bitScanForward(move->dest));
     }
-    */
 
     if (board->en_p && (move->dest & board->en_p) && (move->piece == PAWN))
     {
@@ -892,9 +890,9 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
         temp_move.dest = lsb;
         temp_move.piece = piece;
         temp_move.color = color;
+        temp_move.promote = -1;
         if (is_legal(board, temp_move))
         {
-            /*
             if (piece == PAWN && (lsb & (RANK_1 | RANK_8)))
             {
                 int i;
@@ -913,7 +911,6 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
             }
             else
             {
-            */
                 movearr[count].move.src = src;
                 movearr[count].move.dest = lsb;
                 movearr[count].move.piece = piece;
@@ -922,7 +919,7 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
                 movearr[count].weight = 1;
                 apply_heuristics(board, movearr + count);
                 count++;
-            //}
+            }
         }
         moves &= ~lsb;
         lsb = moves & -moves;
@@ -1146,6 +1143,7 @@ int is_checkmate(Board* board, int color)
                 temp_move.dest = lsb;
                 temp_move.piece = piece;
                 temp_move.color = color;
+                temp_move.promote = -1;
                 if (is_legal(board, temp_move))
                     return 0;
                 moves &= ~lsb;
@@ -1298,6 +1296,8 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
                 //print_board(&temp_board);
             }
         }
+        if (cand->move.promote != -1)
+            pres->proms++;
         pres->nodes++;
     }
     move_piece(&temp_board, &cand->move);
