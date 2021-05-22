@@ -189,6 +189,43 @@ void move_piece(Board* board, Move* move)
         }
     }
 
+    if (move->piece == KING && move->color == WHITE)
+    {
+        if ((move->src & 0x8ULL) && (move->dest & 0x2ULL))
+        {
+            board->pieces[WHITE + ROOK] ^= 0x1ULL;
+            board->pieces[WHITE + ROOK] ^= 0x4ULL;
+            update_hash_direct(board, 64 * (ROOK + WHITE));
+            update_hash_direct(board, 64 * (ROOK + WHITE) + 2);
+        }
+        else if ((move->src & 0x8ULL) && (move->dest & 0x20ULL))
+        {
+            board->pieces[WHITE + ROOK] ^= 0x80ULL;
+            board->pieces[WHITE + ROOK] ^= 0x10ULL;
+            update_hash_direct(board, 64 * (ROOK + WHITE) + 7);
+            update_hash_direct(board, 64 * (ROOK + WHITE) + 4);
+        }
+    }
+    if (move->piece == KING && move->color == BLACK)
+    {
+        if ((move->src & gen_shift(0x8ULL, -56)) && (move->dest &
+                    gen_shift(0x2ULL, -56)))
+        {
+            board->pieces[BLACK + ROOK] ^= 0x1ULL << 56;
+            board->pieces[BLACK + ROOK] ^= 0x4ULL << 56;
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 56);
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 58);
+        }
+        else if ((move->src & gen_shift(0x8ULL, -56)) && (move->dest &
+                    gen_shift(0x20ULL, -56)))
+        {
+            board->pieces[BLACK + ROOK] ^= 0x80ULL << 56;
+            board->pieces[BLACK + ROOK] ^= 0x10ULL << 56;
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 63);
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 60);
+        }
+    }
+
     if (board->to_move == WHITE)
         board->to_move = BLACK;
     else
@@ -543,21 +580,19 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
             moves |= tmp;
             if (i == 3 && color == WHITE)
             {
-                if ((board->castle & 0x02ULL) && !(friends &
-                                0x06ULL))
+                if ((board->castle & 0x02ULL) && !(friends & 0x06ULL)) 
                     moves |= 0x02ULL;
-                if ((board->castle & 0x20ULL) && !(friends &
-                                0x68ULL))
+                if ((board->castle & 0x20ULL) && !(friends & 0x70ULL))
                     moves |= 0x20ULL;
             }
             else if (i == 59 && color == BLACK)
             {
-                if ((board->castle & (0x02ULL << 7 * 8)) && 
-                        ((friends & (0x06ULL << 7 * 8)) == 0))
-                    moves |= 0x02ULL << 7 * 8;
-                if ((board->castle & (0x20ULL << 7 * 8)) && 
-                        ((friends & (0x68ULL << 7 * 8)) == 0))
-                    moves |= 0x20ULL << 7 * 8;
+                if ((board->castle & (0x02ULL << 56)) && 
+                        ((friends & (0x06ULL << 56)) == 0))
+                    moves |= 0x02ULL << 56;
+                if ((board->castle & (0x20ULL << 56)) && 
+                        ((friends & (0x70ULL << 56)) == 0))
+                    moves |= 0x20ULL << 56;
             }
         }
         if (pieces >> i == 1)
@@ -888,11 +923,11 @@ int is_legal(Board* board, Move move)
     else
     {
         all_attacks = gen_all_attacks(&temp, WHITE);
-        if (move.piece == KING && ((0xEULL << (8 * 7)) & all_attacks) &&
-                (move.dest & (board->castle & (0xFULL << (8 * 7)))))
+        if (move.piece == KING && ((0xEULL << 56) & all_attacks) &&
+                (move.dest & (board->castle & (0xFULL << 56))))
             return 0;
-        if (move.piece == KING && ((0x38ULL << (8 * 7)) & all_attacks) &&
-                (move.dest & (board->castle & (0xF0ULL << (8 * 7)))))
+        if (move.piece == KING && ((0x38ULL << 56) & all_attacks) &&
+                (move.dest & (board->castle & (0xF0ULL << 56))))
             return 0;
         return !(temp.pieces[BLACK + KING] & all_attacks);
     }
@@ -1212,6 +1247,23 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
             pres->caps++;
             pres->eps++;
         }
+        if (cand->move.piece == KING && cand->move.color == WHITE)
+        {
+            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22))
+            {
+                pres->castles++;
+                //print_board(&temp_board);
+            }
+        }
+        if (cand->move.piece == KING && cand->move.color == BLACK)
+        {
+            if ((cand->move.src & (0x8ULL << 56)) && (cand->move.dest &
+                        (0x22 << 56)))
+            {
+                pres->castles++;
+                print_board(&temp_board);
+            }
+        }
         pres->nodes++;
     }
     move_piece(&temp_board, &cand->move);
@@ -1227,6 +1279,21 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         {
             pres->checkmates++;
             //print_board(&temp_board);
+        }
+        if (cand->move.piece == KING && cand->move.color == WHITE)
+        {
+            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22))
+            {
+                //print_board(&temp_board);
+            }
+        }
+        if (cand->move.piece == KING && cand->move.color == BLACK)
+        {
+            if ((cand->move.src & (0x8ULL << 56)) && (cand->move.dest &
+                        (0x22 << 56)))
+            {
+                print_board(&temp_board);
+            }
         }
 
         return;

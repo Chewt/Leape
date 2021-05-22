@@ -119,6 +119,7 @@ int main()
             printf("%ld nodes at %d depth\n", pres.nodes, depth);
             printf("%ld captures, %ld en pessants\n", pres.caps, pres.eps);
             printf("%ld checks, %ld checkmates\n", pres.checks, pres.checkmates);
+            printf("%ld castles\n", pres.castles);
         }
         free(message);
     }
