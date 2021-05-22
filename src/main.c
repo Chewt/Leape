@@ -61,6 +61,8 @@ int main()
                 token = strtok_r(NULL, "\n", &saveptr);
                 load_fen(&board, token);
             }
+            if (token && !strcmp(token, "startpos"))
+                set_default(&board);
         }
         else if (!strcmp(token, "go"))
         {

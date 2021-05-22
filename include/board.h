@@ -51,6 +51,7 @@ typedef struct
     uint64_t dest;
     int piece;
     int color;
+    int promote;
 } Move;
 
 typedef struct

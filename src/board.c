@@ -7,13 +7,13 @@
 #include "zobrist.h"
 
 /* Constants for piece attacks */
-const uint64_t RDIAG = 0x0102040810204080;
-const uint64_t LDIAG = 0x8040201008040201;
-const uint64_t VERT  = 0x0101010101010101;
-const uint64_t HORZ  = 0x00000000000000FF;
-const uint64_t NMOV  = 0x0000000A1100110A;
-const uint64_t KMOV  = 0x0000000000070507;
-const uint64_t PATTK = 0x0000000000050005;
+const uint64_t RDIAG = 0x0102040810204080ULL;
+const uint64_t LDIAG = 0x8040201008040201ULL;
+const uint64_t VERT  = 0x0101010101010101ULL;
+const uint64_t HORZ  = 0x00000000000000FFULL;
+const uint64_t NMOV  = 0x0000000A1100110AULL;
+const uint64_t KMOV  = 0x0000000000070507ULL;
+const uint64_t PATTK = 0x0000000000050005ULL;
 
 /* Table used for determining bit index */
 const int index64[64] = {
@@ -72,21 +72,21 @@ int bitScanReverse(uint64_t bb)
 uint64_t vert_mask(int count)
 {
     if (count == 1)
-        return 0x0101010101010101;
+        return 0x0101010101010101ULL;
     else if (count == 2)
-        return 0x0303030303030303;
+        return 0x0303030303030303ULL;
     else if (count == 3)
-        return 0x0707070707070707;
+        return 0x0707070707070707ULL;
     else if (count == 4)
-        return 0x0F0F0F0F0F0F0F0F;
+        return 0x0F0F0F0F0F0F0F0FULL;
     else if (count == 5)
-        return 0x1F1F1F1F1F1F1F1F;
+        return 0x1F1F1F1F1F1F1F1FULL;
     else if (count == 6)
-        return 0x3F3F3F3F3F3F3F3F;
+        return 0x3F3F3F3F3F3F3F3FULL;
     else if (count == 7)
-        return 0x7F7F7F7F7F7F7F7F;
+        return 0x7F7F7F7F7F7F7F7FULL;
     else
-        return 0xFFFFFFFFFFFFFFFF;
+        return 0xFFFFFFFFFFFFFFFFULL;
 }
 
 /*******************************************************************************
@@ -97,20 +97,20 @@ uint64_t vert_mask(int count)
 void set_default(Board* board)
 {
     memset(board, 0, sizeof(Board));
-    board->pieces[WHITE + PAWN]   = 0x000000000000FF00;
-    board->pieces[WHITE + BISHOP] = 0x0000000000000024;
-    board->pieces[WHITE + KNIGHT] = 0x0000000000000042;
-    board->pieces[WHITE + ROOK]   = 0x0000000000000081;
-    board->pieces[WHITE + QUEEN]  = 0x0000000000000010;
-    board->pieces[WHITE + KING]   = 0x0000000000000008;
-    board->pieces[BLACK + PAWN]   = 0x00FF000000000000;
-    board->pieces[BLACK + BISHOP] = 0x2400000000000000;
-    board->pieces[BLACK + KNIGHT] = 0x4200000000000000;
-    board->pieces[BLACK + ROOK]   = 0x8100000000000000;
-    board->pieces[BLACK + QUEEN]  = 0x1000000000000000;
-    board->pieces[BLACK + KING]   = 0x0800000000000000;
-    board->castle                 = 0x2200000000000022;
-    board->en_p                   = 0x0000000000000000;
+    board->pieces[WHITE + PAWN]   = 0x000000000000FF00ULL;
+    board->pieces[WHITE + BISHOP] = 0x0000000000000024ULL;
+    board->pieces[WHITE + KNIGHT] = 0x0000000000000042ULL;
+    board->pieces[WHITE + ROOK]   = 0x0000000000000081ULL;
+    board->pieces[WHITE + QUEEN]  = 0x0000000000000010ULL;
+    board->pieces[WHITE + KING]   = 0x0000000000000008ULL;
+    board->pieces[BLACK + PAWN]   = 0x00FF000000000000ULL;
+    board->pieces[BLACK + BISHOP] = 0x2400000000000000ULL;
+    board->pieces[BLACK + KNIGHT] = 0x4200000000000000ULL;
+    board->pieces[BLACK + ROOK]   = 0x8100000000000000ULL;
+    board->pieces[BLACK + QUEEN]  = 0x1000000000000000ULL;
+    board->pieces[BLACK + KING]   = 0x0800000000000000ULL;
+    board->castle                 = 0x2200000000000022ULL;
+    board->en_p                   = 0x0000000000000000ULL;
     board->to_move                = WHITE;
     update_combined_pos(board);
     board->hash = hash_position(board);
@@ -170,8 +170,20 @@ void move_piece(Board* board, Move* move)
         }
     }
     board->pieces[move->color + move->piece] ^= move->src;
-    board->pieces[move->color + move->piece] |= move->dest;
+    board->pieces[move->color + move->piece] ^= move->dest;
     update_hash_move(board, move);
+
+    /*
+    if (move->promote != -1)
+    {
+        board->pieces[move->color + move->piece] ^= move->dest;
+        board->pieces[move->color + move->promote] ^= move->dest;
+        update_hash_direct(board, 64 * (move->color + move->piece) +
+                bitScanForward(move->dest));
+        update_hash_direct(board, 64 * (move->color + move->promote) +
+                bitScanForward(move->dest));
+    }
+    */
 
     if (board->en_p && (move->dest & board->en_p) && (move->piece == PAWN))
     {
@@ -208,16 +220,14 @@ void move_piece(Board* board, Move* move)
     }
     if (move->piece == KING && move->color == BLACK)
     {
-        if ((move->src & gen_shift(0x8ULL, -56)) && (move->dest &
-                    gen_shift(0x2ULL, -56)))
+        if ((move->src & (0x8ULL << 56)) && (move->dest & (0x2ULL << 56)))
         {
             board->pieces[BLACK + ROOK] ^= 0x1ULL << 56;
             board->pieces[BLACK + ROOK] ^= 0x4ULL << 56;
             update_hash_direct(board, 64 * (ROOK + BLACK) + 56);
             update_hash_direct(board, 64 * (ROOK + BLACK) + 58);
         }
-        else if ((move->src & gen_shift(0x8ULL, -56)) && (move->dest &
-                    gen_shift(0x20ULL, -56)))
+        else if ((move->src & (0x8ULL << 56)) && (move->dest & (0x20ULL << 56)))
         {
             board->pieces[BLACK + ROOK] ^= 0x80ULL << 56;
             board->pieces[BLACK + ROOK] ^= 0x10ULL << 56;
@@ -580,18 +590,20 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
             moves |= tmp;
             if (i == 3 && color == WHITE)
             {
-                if ((board->castle & 0x02ULL) && !(friends & 0x06ULL)) 
+                if ((board->castle & 0x02ULL) &&
+                        !((board->all_white|board->all_black) & 0x06ULL)) 
                     moves |= 0x02ULL;
-                if ((board->castle & 0x20ULL) && !(friends & 0x70ULL))
+                if ((board->castle & 0x20ULL) &&
+                        !((board->all_white|board->all_black) & 0x70ULL))
                     moves |= 0x20ULL;
             }
             else if (i == 59 && color == BLACK)
             {
                 if ((board->castle & (0x02ULL << 56)) && 
-                        ((friends & (0x06ULL << 56)) == 0))
+                       !((board->all_white|board->all_black) & (0x06ULL << 56)))
                     moves |= 0x02ULL << 56;
                 if ((board->castle & (0x20ULL << 56)) && 
-                        ((friends & (0x70ULL << 56)) == 0))
+                       !((board->all_white|board->all_black) & (0x70ULL << 56)))
                     moves |= 0x20ULL << 56;
             }
         }
@@ -882,13 +894,35 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
         temp_move.color = color;
         if (is_legal(board, temp_move))
         {
-            movearr[count].move.src = src;
-            movearr[count].move.dest = lsb;
-            movearr[count].move.piece = piece;
-            movearr[count].move.color = color;
-            movearr[count].weight = 1;
-            apply_heuristics(board, movearr + count);
-            count++;
+            /*
+            if (piece == PAWN && (lsb & (RANK_1 | RANK_8)))
+            {
+                int i;
+                for (i = BISHOP; i <= QUEEN; ++i)
+                {
+                    movearr[count].move.src = src;
+                    movearr[count].move.dest = lsb;
+                    movearr[count].move.piece = piece;
+                    movearr[count].move.color = color;
+                    movearr[count].move.promote = i;
+                    movearr[count].weight = 1;
+                    apply_heuristics(board, movearr + count);
+                    count++;
+
+                }
+            }
+            else
+            {
+            */
+                movearr[count].move.src = src;
+                movearr[count].move.dest = lsb;
+                movearr[count].move.piece = piece;
+                movearr[count].move.color = color;
+                movearr[count].move.promote = -1;
+                movearr[count].weight = 1;
+                apply_heuristics(board, movearr + count);
+                count++;
+            //}
         }
         moves &= ~lsb;
         lsb = moves & -moves;
@@ -1249,7 +1283,7 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         }
         if (cand->move.piece == KING && cand->move.color == WHITE)
         {
-            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22))
+            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22ULL))
             {
                 pres->castles++;
                 //print_board(&temp_board);
@@ -1258,10 +1292,10 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         if (cand->move.piece == KING && cand->move.color == BLACK)
         {
             if ((cand->move.src & (0x8ULL << 56)) && (cand->move.dest &
-                        (0x22 << 56)))
+                        (0x22ULL << 56)))
             {
                 pres->castles++;
-                print_board(&temp_board);
+                //print_board(&temp_board);
             }
         }
         pres->nodes++;
@@ -1282,7 +1316,7 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         }
         if (cand->move.piece == KING && cand->move.color == WHITE)
         {
-            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22))
+            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22ULL))
             {
                 //print_board(&temp_board);
             }
@@ -1290,9 +1324,9 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         if (cand->move.piece == KING && cand->move.color == BLACK)
         {
             if ((cand->move.src & (0x8ULL << 56)) && (cand->move.dest &
-                        (0x22 << 56)))
+                        (0x22ULL << 56)))
             {
-                print_board(&temp_board);
+                //print_board(&temp_board);
             }
         }
 
