@@ -1019,7 +1019,9 @@ Move find_best_move(Board* board, int depth)
                 }
                 char s[20];
                 sprintf(s, " weight: %d\n", cands[i].weight);
-                write(1, s, strlen(s));
+                if(write(1, s, strlen(s)) == -1)
+                    perror("from find_best_move");
+
             }
             if (cands[i].weight > bestmove.weight)
                 bestmove = cands[i];

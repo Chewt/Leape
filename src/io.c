@@ -10,7 +10,8 @@ void print_location(uint64_t board)
     int square = 63 - bitScanForward(board);
     char s[20];
     sprintf(s, "%c%d", square%8+'a',8-square/8);
-    write(1, s, strlen(s));
+    if(write(1, s, strlen(s)) == -1)
+        perror("from print_location");
 }
 
 void print_board(Board* board)
