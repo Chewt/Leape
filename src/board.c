@@ -730,11 +730,11 @@ int gen_all_moves(Board* board, Cand* movearr)
  *             in the search.
  * @param depth The depth to which the function should search
  ******************************************************************************/
-int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
+int eval_prune(Board* board, Cand* cand, int alpha, int beta, int depth)
 {
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
-    move_piece(&temp_board, &cand.move);
+    move_piece(&temp_board, &cand->move);
     if (is_hashed(&temp_board))
         return get_hashed_value(&temp_board);
     if (is_stalemate(&temp_board, temp_board.to_move))
@@ -765,7 +765,7 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
                 break;
             if (temp_board.to_move == BLACK)
             {
-                temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
+                temp = eval_prune(&temp_board,&cans[i], alpha, beta, depth - 1);
                 if (temp < board_value)
                     board_value = temp;
                 beta = (temp < beta) ? temp : beta;
@@ -777,7 +777,7 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
             }
             else
             {
-                temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
+                temp = eval_prune(&temp_board,&cans[i], alpha, beta, depth - 1);
                 if (temp > board_value)
                     board_value = temp;
                 alpha = (temp > alpha) ? temp : alpha;
@@ -989,17 +989,36 @@ Move find_best_move(Board* board, int depth)
         {
             if (cands[i].move.src == EMPTY)
                 break;
-            int temp_weight = eval_prune(board, cands[i], -300, 300, j);
+            int temp_weight = eval_prune(board, &cands[i], -300, 300, j);
             if (board->to_move == BLACK)
                 temp_weight *= -1;
             cands[i].weight = temp_weight;
             if (j == depth)
             {
                 print_location(cands[i].move.src);
-                write(1, " to ", 4);
                 print_location(cands[i].move.dest);
+                if (cands[i].move.promote == BISHOP)
+                {
+                    if(write(1, "b", 1) == -1)
+                        perror("from find_best_move");
+                }
+                else if (cands[i].move.promote == KNIGHT)
+                {
+                    if(write(1, "n", 1) == -1)
+                        perror("from find_best_move");
+                }
+                else if (cands[i].move.promote == ROOK)
+                {
+                    if(write(1, "r", 1) == -1)
+                        perror("from find_best_move");
+                }
+                else if (cands[i].move.promote == QUEEN)
+                {
+                    if(write(1, "q", 1) == -1)
+                        perror("from find_best_move");
+                }
                 char s[20];
-                sprintf(s, " %d's weight: %d\n", i, cands[i].weight);
+                sprintf(s, " weight: %d\n", cands[i].weight);
                 write(1, s, strlen(s));
             }
             if (cands[i].weight > bestmove.weight)
