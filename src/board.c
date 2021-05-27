@@ -6,6 +6,7 @@
 #include "io.h"
 #include "zobrist.h"
 
+
 /* Constants for piece attacks */
 const uint64_t RDIAG = 0x0102040810204080ULL;
 const uint64_t LDIAG = 0x8040201008040201ULL;
@@ -14,6 +15,8 @@ const uint64_t HORZ  = 0x00000000000000FFULL;
 const uint64_t NMOV  = 0x0000000A1100110AULL;
 const uint64_t KMOV  = 0x0000000000070507ULL;
 const uint64_t PATTK = 0x0000000000050005ULL;
+
+Move current_line[LINE_LENGTH];
 
 /* Table used for determining bit index */
 const int index64[64] = {
@@ -114,6 +117,7 @@ void set_default(Board* board)
     board->to_move                = WHITE;
     update_combined_pos(board);
     board->hash = hash_position(board);
+    memset(current_line, 0, sizeof(Move) * LINE_LENGTH);
 }
 
 /*******************************************************************************
@@ -717,6 +721,55 @@ int gen_all_moves(Board* board, Cand* movearr)
     return nmoves;
 }
 
+int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth);
+int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand->move);
+    if(is_checkmate(&temp_board, temp_board.to_move))
+        return -300;
+    if (!depth)
+        return get_board_value(&temp_board);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(&temp_board, cans);
+    int i;
+    int score;
+    for (i = 0; i < num_moves; ++i)
+    {
+        score = alphaBetaMin(&temp_board, &cans[i], alpha, beta, depth - 1);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    return alpha;
+}
+
+int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand->move);
+    if(is_checkmate(&temp_board, temp_board.to_move))
+        return 300;
+    if (!depth)
+        return -get_board_value(&temp_board);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(&temp_board, cans);
+    int i;
+    int score;
+    for (i = 0; i < num_moves; ++i)
+    {
+        score = alphaBetaMax(&temp_board, &cans[i], alpha, beta, depth - 1);
+        if (score <= alpha)
+            return alpha;
+        if (score < beta)
+            beta = score;
+    }
+    return beta;
+}
+
 /*******************************************************************************
  * Minimax algo with alpha-beta pruning to find the best chess move.
  *
@@ -742,19 +795,19 @@ int eval_prune(Board* board, Cand* cand, int alpha, int beta, int depth)
     if (depth == 0)
     {
         int bv = get_board_value(&temp_board);
-        set_hashed_value(board, bv);
+        set_hashed_value(&temp_board, bv);
+        //current_line[0] = cand->move;
         return bv;
     }
     else
     {
         Cand cans[MOVES_PER_POSITION];
         int num_moves = gen_all_moves(&temp_board, cans);
-        if (depth > 4)
-            num_moves = 10;
         int i;
         int board_value;
         int temp = 0;
         int broken = 0;
+        Move* bestmove = &cans[0].move;
         if (temp_board.to_move == BLACK)
             board_value = 300;
         else
@@ -767,11 +820,15 @@ int eval_prune(Board* board, Cand* cand, int alpha, int beta, int depth)
             {
                 temp = eval_prune(&temp_board,&cans[i], alpha, beta, depth - 1);
                 if (temp < board_value)
+                {
                     board_value = temp;
+                    bestmove = &cans[i].move;
+                }
                 beta = (temp < beta) ? temp : beta;
                 if (beta <= alpha)
                 {
                     broken = 1;
+                    //memset(current_line, 0, sizeof(Move) * depth);
                     break;
                 }
             }
@@ -779,17 +836,22 @@ int eval_prune(Board* board, Cand* cand, int alpha, int beta, int depth)
             {
                 temp = eval_prune(&temp_board,&cans[i], alpha, beta, depth - 1);
                 if (temp > board_value)
+                {
                     board_value = temp;
+                    bestmove = &cans[i].move;
+                }
                 alpha = (temp > alpha) ? temp : alpha;
                 if (beta <= alpha)
                 {
                     broken = 1;
+                    //memset(current_line, 0, sizeof(Move) * depth);
                     break;
                 }
             }
         }
-        if (!broken)
+        //if (!broken)
             set_hashed_value(&temp_board, board_value);
+        current_line[depth - 1] = *bestmove;
         return board_value;
     }
 }
@@ -832,7 +894,10 @@ int get_board_value(Board* board)
         all_pieces &= ~lsb;
         lsb = all_pieces & -all_pieces;
     }
-    return white_score - black_score;
+    if (board->to_move == WHITE)
+        return white_score - black_score;
+    else
+        return black_score - white_score;
 }
 
 /*******************************************************************************
@@ -982,49 +1047,45 @@ Move find_best_move(Board* board, int depth)
     int i;
     for (j = 1; j <= depth; ++j)
     {
-        if (j > 4)
-            num_moves = 10;
         zobrist_clear();
         for (i = 0; i < num_moves; ++i)
         {
             if (cands[i].move.src == EMPTY)
                 break;
-            int temp_weight = eval_prune(board, &cands[i], -300, 300, j);
-            if (board->to_move == BLACK)
-                temp_weight *= -1;
+            //int temp_weight = eval_prune(board, &cands[i], -300, 300, j - 1);
+            //int temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
+            int temp_weight = 0;
+            //if (board->to_move == BLACK)
+                temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
+            //else 
+             //   temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
+            //if (board->to_move == BLACK)
+                //temp_weight *= -1;
             cands[i].weight = temp_weight;
             if (j == depth)
             {
-                print_location(cands[i].move.src);
-                print_location(cands[i].move.dest);
-                if (cands[i].move.promote == BISHOP)
-                {
-                    if(write(1, "b", 1) == -1)
-                        perror("from find_best_move");
-                }
-                else if (cands[i].move.promote == KNIGHT)
-                {
-                    if(write(1, "n", 1) == -1)
-                        perror("from find_best_move");
-                }
-                else if (cands[i].move.promote == ROOK)
-                {
-                    if(write(1, "r", 1) == -1)
-                        perror("from find_best_move");
-                }
-                else if (cands[i].move.promote == QUEEN)
-                {
-                    if(write(1, "q", 1) == -1)
-                        perror("from find_best_move");
-                }
-                char s[20];
-                sprintf(s, " weight: %d\n", cands[i].weight);
+                //current_line[j] = cands[i].move;
+                print_move(&cands[i].move);
+                char s[100];
+                sprintf(s, " weight: %d ", cands[i].weight);
                 if(write(1, s, strlen(s)) == -1)
                     perror("from find_best_move");
-
+                int m;
+                for (m = LINE_LENGTH - 1; m >= 0; --m)
+                {
+                    if (current_line[m].src)
+                    {
+                        print_move(&current_line[m]);
+                        if(write(1, " ", 1) == -1)
+                            perror("from find_best_move");
+                    }
+                }
+                if(write(1, "\n", 1) == -1)
+                    perror("from find_best_move");
+                memset(current_line, 0, sizeof(Move) * LINE_LENGTH);
+                if (cands[i].weight > bestmove.weight)
+                    bestmove = cands[i];
             }
-            if (cands[i].weight > bestmove.weight)
-                bestmove = cands[i];
         }
         qsort(cands, num_moves, sizeof(Cand), comp_cand);
     }

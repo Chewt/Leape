@@ -81,6 +81,9 @@ extern const uint64_t KMOV;
 extern const uint64_t PATTK;
 
 extern const Move default_move;
+
+#define LINE_LENGTH 20
+extern Move current_line[LINE_LENGTH];
  
 void set_default(Board* board);
 void move_piece(Board* board, Move* move);
