@@ -8,7 +8,7 @@ int zobrist_hash[TABLE_SIZE];
 
 void zobrist_init()
 {
-    int i;
+    uint64_t i;
     for (i = 0; i < RANDOM_SIZE; ++i)
         random_nums[i] = rand() % HASH_SIZE;
     zobrist_clear();
@@ -16,7 +16,7 @@ void zobrist_init()
 
 void zobrist_clear()
 {
-    int i;
+    uint64_t i;
     for (i = 0; i < TABLE_SIZE; ++i)
         zobrist_hash[i] = DEFUALT_VALUE;
 }

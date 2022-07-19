@@ -26,7 +26,6 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(INCLUDEDIR)/%.h $(UNIDEPS)
 $(INCLUDES):
 
 $(UNIDEPS):
-	@touch $@
 
 .PHONY: clean
 clean: 

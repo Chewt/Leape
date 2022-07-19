@@ -6,14 +6,17 @@
 #include "io.h"
 #include "zobrist.h"
 
+
 /* Constants for piece attacks */
-const uint64_t RDIAG = 0x0102040810204080;
-const uint64_t LDIAG = 0x8040201008040201;
-const uint64_t VERT  = 0x0101010101010101;
-const uint64_t HORZ  = 0x00000000000000FF;
-const uint64_t NMOV  = 0x0000000A1100110A;
-const uint64_t KMOV  = 0x0000000000070507;
-const uint64_t PATTK = 0x0000000000050005;
+const uint64_t RDIAG = 0x0102040810204080ULL;
+const uint64_t LDIAG = 0x8040201008040201ULL;
+const uint64_t VERT  = 0x0101010101010101ULL;
+const uint64_t HORZ  = 0x00000000000000FFULL;
+const uint64_t NMOV  = 0x0000000A1100110AULL;
+const uint64_t KMOV  = 0x0000000000070507ULL;
+const uint64_t PATTK = 0x0000000000050005ULL;
+
+Move current_line[LINE_LENGTH];
 
 /* Table used for determining bit index */
 const int index64[64] = {
@@ -72,21 +75,21 @@ int bitScanReverse(uint64_t bb)
 uint64_t vert_mask(int count)
 {
     if (count == 1)
-        return 0x0101010101010101;
+        return 0x0101010101010101ULL;
     else if (count == 2)
-        return 0x0303030303030303;
+        return 0x0303030303030303ULL;
     else if (count == 3)
-        return 0x0707070707070707;
+        return 0x0707070707070707ULL;
     else if (count == 4)
-        return 0x0F0F0F0F0F0F0F0F;
+        return 0x0F0F0F0F0F0F0F0FULL;
     else if (count == 5)
-        return 0x1F1F1F1F1F1F1F1F;
+        return 0x1F1F1F1F1F1F1F1FULL;
     else if (count == 6)
-        return 0x3F3F3F3F3F3F3F3F;
+        return 0x3F3F3F3F3F3F3F3FULL;
     else if (count == 7)
-        return 0x7F7F7F7F7F7F7F7F;
+        return 0x7F7F7F7F7F7F7F7FULL;
     else
-        return 0xFFFFFFFFFFFFFFFF;
+        return 0xFFFFFFFFFFFFFFFFULL;
 }
 
 /*******************************************************************************
@@ -97,23 +100,24 @@ uint64_t vert_mask(int count)
 void set_default(Board* board)
 {
     memset(board, 0, sizeof(Board));
-    board->pieces[WHITE + PAWN]   = 0x000000000000FF00;
-    board->pieces[WHITE + BISHOP] = 0x0000000000000024;
-    board->pieces[WHITE + KNIGHT] = 0x0000000000000042;
-    board->pieces[WHITE + ROOK]   = 0x0000000000000081;
-    board->pieces[WHITE + QUEEN]  = 0x0000000000000010;
-    board->pieces[WHITE + KING]   = 0x0000000000000008;
-    board->pieces[BLACK + PAWN]   = 0x00FF000000000000;
-    board->pieces[BLACK + BISHOP] = 0x2400000000000000;
-    board->pieces[BLACK + KNIGHT] = 0x4200000000000000;
-    board->pieces[BLACK + ROOK]   = 0x8100000000000000;
-    board->pieces[BLACK + QUEEN]  = 0x1000000000000000;
-    board->pieces[BLACK + KING]   = 0x0800000000000000;
-    board->castle                 = 0x2200000000000022;
-    board->en_p                   = 0x0000000000000000;
+    board->pieces[WHITE + PAWN]   = 0x000000000000FF00ULL;
+    board->pieces[WHITE + BISHOP] = 0x0000000000000024ULL;
+    board->pieces[WHITE + KNIGHT] = 0x0000000000000042ULL;
+    board->pieces[WHITE + ROOK]   = 0x0000000000000081ULL;
+    board->pieces[WHITE + QUEEN]  = 0x0000000000000010ULL;
+    board->pieces[WHITE + KING]   = 0x0000000000000008ULL;
+    board->pieces[BLACK + PAWN]   = 0x00FF000000000000ULL;
+    board->pieces[BLACK + BISHOP] = 0x2400000000000000ULL;
+    board->pieces[BLACK + KNIGHT] = 0x4200000000000000ULL;
+    board->pieces[BLACK + ROOK]   = 0x8100000000000000ULL;
+    board->pieces[BLACK + QUEEN]  = 0x1000000000000000ULL;
+    board->pieces[BLACK + KING]   = 0x0800000000000000ULL;
+    board->castle                 = 0x2200000000000022ULL;
+    board->en_p                   = 0x0000000000000000ULL;
     board->to_move                = WHITE;
     update_combined_pos(board);
     board->hash = hash_position(board);
+    memset(current_line, 0, sizeof(Move) * LINE_LENGTH);
 }
 
 /*******************************************************************************
@@ -170,8 +174,18 @@ void move_piece(Board* board, Move* move)
         }
     }
     board->pieces[move->color + move->piece] ^= move->src;
-    board->pieces[move->color + move->piece] |= move->dest;
+    board->pieces[move->color + move->piece] ^= move->dest;
     update_hash_move(board, move);
+
+    if (move->promote != -1)
+    {
+        board->pieces[move->color + move->piece] ^= move->dest;
+        board->pieces[move->color + move->promote] ^= move->dest;
+        update_hash_direct(board, 64 * (move->color + move->piece) +
+                bitScanForward(move->dest));
+        update_hash_direct(board, 64 * (move->color + move->promote) +
+                bitScanForward(move->dest));
+    }
 
     if (board->en_p && (move->dest & board->en_p) && (move->piece == PAWN))
     {
@@ -186,6 +200,41 @@ void move_piece(Board* board, Move* move)
             board->pieces[WHITE + PAWN] &= ~(board->en_p << 8);
             update_hash_direct(board, 64 * (PAWN + WHITE) +
                     bitScanForward(board->en_p << 8));
+        }
+    }
+
+    if (move->piece == KING && move->color == WHITE)
+    {
+        if ((move->src & 0x8ULL) && (move->dest & 0x2ULL))
+        {
+            board->pieces[WHITE + ROOK] ^= 0x1ULL;
+            board->pieces[WHITE + ROOK] ^= 0x4ULL;
+            update_hash_direct(board, 64 * (ROOK + WHITE));
+            update_hash_direct(board, 64 * (ROOK + WHITE) + 2);
+        }
+        else if ((move->src & 0x8ULL) && (move->dest & 0x20ULL))
+        {
+            board->pieces[WHITE + ROOK] ^= 0x80ULL;
+            board->pieces[WHITE + ROOK] ^= 0x10ULL;
+            update_hash_direct(board, 64 * (ROOK + WHITE) + 7);
+            update_hash_direct(board, 64 * (ROOK + WHITE) + 4);
+        }
+    }
+    if (move->piece == KING && move->color == BLACK)
+    {
+        if ((move->src & (0x8ULL << 56)) && (move->dest & (0x2ULL << 56)))
+        {
+            board->pieces[BLACK + ROOK] ^= 0x1ULL << 56;
+            board->pieces[BLACK + ROOK] ^= 0x4ULL << 56;
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 56);
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 58);
+        }
+        else if ((move->src & (0x8ULL << 56)) && (move->dest & (0x20ULL << 56)))
+        {
+            board->pieces[BLACK + ROOK] ^= 0x80ULL << 56;
+            board->pieces[BLACK + ROOK] ^= 0x10ULL << 56;
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 63);
+            update_hash_direct(board, 64 * (ROOK + BLACK) + 60);
         }
     }
 
@@ -543,21 +592,21 @@ uint64_t gen_king_moves(Board* board, int color, uint64_t pieces)
             moves |= tmp;
             if (i == 3 && color == WHITE)
             {
-                if ((board->castle & 0x02ULL) && !(friends &
-                                0x06ULL))
+                if ((board->castle & 0x02ULL) &&
+                        !((board->all_white|board->all_black) & 0x06ULL)) 
                     moves |= 0x02ULL;
-                if ((board->castle & 0x20ULL) && !(friends &
-                                0x68ULL))
+                if ((board->castle & 0x20ULL) &&
+                        !((board->all_white|board->all_black) & 0x70ULL))
                     moves |= 0x20ULL;
             }
             else if (i == 59 && color == BLACK)
             {
-                if ((board->castle & (0x02ULL << 7 * 8)) && 
-                        ((friends & (0x06ULL << 7 * 8)) == 0))
-                    moves |= 0x02ULL << 7 * 8;
-                if ((board->castle & (0x20ULL << 7 * 8)) && 
-                        ((friends & (0x68ULL << 7 * 8)) == 0))
-                    moves |= 0x20ULL << 7 * 8;
+                if ((board->castle & (0x02ULL << 56)) && 
+                       !((board->all_white|board->all_black) & (0x06ULL << 56)))
+                    moves |= 0x02ULL << 56;
+                if ((board->castle & (0x20ULL << 56)) && 
+                       !((board->all_white|board->all_black) & (0x70ULL << 56)))
+                    moves |= 0x20ULL << 56;
             }
         }
         if (pieces >> i == 1)
@@ -672,6 +721,55 @@ int gen_all_moves(Board* board, Cand* movearr)
     return nmoves;
 }
 
+int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth);
+int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand->move);
+    if(is_checkmate(&temp_board, temp_board.to_move))
+        return -300;
+    if (!depth)
+        return get_board_value(&temp_board);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(&temp_board, cans);
+    int i;
+    int score;
+    for (i = 0; i < num_moves; ++i)
+    {
+        score = alphaBetaMin(&temp_board, &cans[i], alpha, beta, depth - 1);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    return alpha;
+}
+
+int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand->move);
+    if(is_checkmate(&temp_board, temp_board.to_move))
+        return 300;
+    if (!depth)
+        return -get_board_value(&temp_board);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(&temp_board, cans);
+    int i;
+    int score;
+    for (i = 0; i < num_moves; ++i)
+    {
+        score = alphaBetaMax(&temp_board, &cans[i], alpha, beta, depth - 1);
+        if (score <= alpha)
+            return alpha;
+        if (score < beta)
+            beta = score;
+    }
+    return beta;
+}
+
 /*******************************************************************************
  * Minimax algo with alpha-beta pruning to find the best chess move.
  *
@@ -685,11 +783,11 @@ int gen_all_moves(Board* board, Cand* movearr)
  *             in the search.
  * @param depth The depth to which the function should search
  ******************************************************************************/
-int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
+int eval_prune(Board* board, Cand* cand, int alpha, int beta, int depth)
 {
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
-    move_piece(&temp_board, &cand.move);
+    move_piece(&temp_board, &cand->move);
     if (is_hashed(&temp_board))
         return get_hashed_value(&temp_board);
     if (is_stalemate(&temp_board, temp_board.to_move))
@@ -697,19 +795,19 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
     if (depth == 0)
     {
         int bv = get_board_value(&temp_board);
-        set_hashed_value(board, bv);
+        set_hashed_value(&temp_board, bv);
+        //current_line[0] = cand->move;
         return bv;
     }
     else
     {
         Cand cans[MOVES_PER_POSITION];
         int num_moves = gen_all_moves(&temp_board, cans);
-        if (depth > 4)
-            num_moves = 10;
         int i;
         int board_value;
         int temp = 0;
         int broken = 0;
+        Move* bestmove = &cans[0].move;
         if (temp_board.to_move == BLACK)
             board_value = 300;
         else
@@ -720,31 +818,40 @@ int eval_prune(Board* board, Cand cand, int alpha, int beta, int depth)
                 break;
             if (temp_board.to_move == BLACK)
             {
-                temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
+                temp = eval_prune(&temp_board,&cans[i], alpha, beta, depth - 1);
                 if (temp < board_value)
+                {
                     board_value = temp;
+                    bestmove = &cans[i].move;
+                }
                 beta = (temp < beta) ? temp : beta;
                 if (beta <= alpha)
                 {
                     broken = 1;
+                    //memset(current_line, 0, sizeof(Move) * depth);
                     break;
                 }
             }
             else
             {
-                temp = eval_prune(&temp_board, cans[i], alpha, beta, depth - 1);
+                temp = eval_prune(&temp_board,&cans[i], alpha, beta, depth - 1);
                 if (temp > board_value)
+                {
                     board_value = temp;
+                    bestmove = &cans[i].move;
+                }
                 alpha = (temp > alpha) ? temp : alpha;
                 if (beta <= alpha)
                 {
                     broken = 1;
+                    //memset(current_line, 0, sizeof(Move) * depth);
                     break;
                 }
             }
         }
-        if (!broken)
+        //if (!broken)
             set_hashed_value(&temp_board, board_value);
+        current_line[depth - 1] = *bestmove;
         return board_value;
     }
 }
@@ -787,7 +894,10 @@ int get_board_value(Board* board)
         all_pieces &= ~lsb;
         lsb = all_pieces & -all_pieces;
     }
-    return white_score - black_score;
+    if (board->to_move == WHITE)
+        return white_score - black_score;
+    else
+        return black_score - white_score;
 }
 
 /*******************************************************************************
@@ -845,15 +955,36 @@ int extract_moves(Board* board, int color, uint64_t src, Cand* movearr)
         temp_move.dest = lsb;
         temp_move.piece = piece;
         temp_move.color = color;
+        temp_move.promote = -1;
         if (is_legal(board, temp_move))
         {
-            movearr[count].move.src = src;
-            movearr[count].move.dest = lsb;
-            movearr[count].move.piece = piece;
-            movearr[count].move.color = color;
-            movearr[count].weight = 1;
-            apply_heuristics(board, movearr + count);
-            count++;
+            if (piece == PAWN && (lsb & (RANK_1 | RANK_8)))
+            {
+                int i;
+                for (i = BISHOP; i <= QUEEN; ++i)
+                {
+                    movearr[count].move.src = src;
+                    movearr[count].move.dest = lsb;
+                    movearr[count].move.piece = piece;
+                    movearr[count].move.color = color;
+                    movearr[count].move.promote = i;
+                    movearr[count].weight = 1;
+                    apply_heuristics(board, movearr + count);
+                    count++;
+
+                }
+            }
+            else
+            {
+                movearr[count].move.src = src;
+                movearr[count].move.dest = lsb;
+                movearr[count].move.piece = piece;
+                movearr[count].move.color = color;
+                movearr[count].move.promote = -1;
+                movearr[count].weight = 1;
+                apply_heuristics(board, movearr + count);
+                count++;
+            }
         }
         moves &= ~lsb;
         lsb = moves & -moves;
@@ -888,11 +1019,11 @@ int is_legal(Board* board, Move move)
     else
     {
         all_attacks = gen_all_attacks(&temp, WHITE);
-        if (move.piece == KING && ((0xEULL << (8 * 7)) & all_attacks) &&
-                (move.dest & (board->castle & (0xFULL << (8 * 7)))))
+        if (move.piece == KING && ((0xEULL << 56) & all_attacks) &&
+                (move.dest & (board->castle & (0xFULL << 56))))
             return 0;
-        if (move.piece == KING && ((0x38ULL << (8 * 7)) & all_attacks) &&
-                (move.dest & (board->castle & (0xF0ULL << (8 * 7)))))
+        if (move.piece == KING && ((0x38ULL << 56) & all_attacks) &&
+                (move.dest & (board->castle & (0xF0ULL << 56))))
             return 0;
         return !(temp.pieces[BLACK + KING] & all_attacks);
     }
@@ -916,28 +1047,45 @@ Move find_best_move(Board* board, int depth)
     int i;
     for (j = 1; j <= depth; ++j)
     {
-        if (j > 4)
-            num_moves = 10;
         zobrist_clear();
         for (i = 0; i < num_moves; ++i)
         {
             if (cands[i].move.src == EMPTY)
                 break;
-            int temp_weight = eval_prune(board, cands[i], -300, 300, j);
-            if (board->to_move == BLACK)
-                temp_weight *= -1;
+            //int temp_weight = eval_prune(board, &cands[i], -300, 300, j - 1);
+            //int temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
+            int temp_weight = 0;
+            //if (board->to_move == BLACK)
+                temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
+            //else 
+             //   temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
+            //if (board->to_move == BLACK)
+                //temp_weight *= -1;
             cands[i].weight = temp_weight;
             if (j == depth)
             {
-                print_location(cands[i].move.src);
-                write(1, " to ", 4);
-                print_location(cands[i].move.dest);
-                char s[20];
-                sprintf(s, " %d's weight: %d\n", i, cands[i].weight);
-                write(1, s, strlen(s));
+                //current_line[j] = cands[i].move;
+                print_move(&cands[i].move);
+                char s[100];
+                sprintf(s, " weight: %d ", cands[i].weight);
+                if(write(1, s, strlen(s)) == -1)
+                    perror("from find_best_move");
+                int m;
+                for (m = LINE_LENGTH - 1; m >= 0; --m)
+                {
+                    if (current_line[m].src)
+                    {
+                        print_move(&current_line[m]);
+                        if(write(1, " ", 1) == -1)
+                            perror("from find_best_move");
+                    }
+                }
+                if(write(1, "\n", 1) == -1)
+                    perror("from find_best_move");
+                memset(current_line, 0, sizeof(Move) * LINE_LENGTH);
+                if (cands[i].weight > bestmove.weight)
+                    bestmove = cands[i];
             }
-            if (cands[i].weight > bestmove.weight)
-                bestmove = cands[i];
         }
         qsort(cands, num_moves, sizeof(Cand), comp_cand);
     }
@@ -1077,6 +1225,7 @@ int is_checkmate(Board* board, int color)
                 temp_move.dest = lsb;
                 temp_move.piece = piece;
                 temp_move.color = color;
+                temp_move.promote = -1;
                 if (is_legal(board, temp_move))
                     return 0;
                 moves &= ~lsb;
@@ -1212,6 +1361,25 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
             pres->caps++;
             pres->eps++;
         }
+        if (cand->move.piece == KING && cand->move.color == WHITE)
+        {
+            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22ULL))
+            {
+                pres->castles++;
+                //print_board(&temp_board);
+            }
+        }
+        if (cand->move.piece == KING && cand->move.color == BLACK)
+        {
+            if ((cand->move.src & (0x8ULL << 56)) && (cand->move.dest &
+                        (0x22ULL << 56)))
+            {
+                pres->castles++;
+                //print_board(&temp_board);
+            }
+        }
+        if (cand->move.promote != -1)
+            pres->proms++;
         pres->nodes++;
     }
     move_piece(&temp_board, &cand->move);
@@ -1227,6 +1395,21 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
         {
             pres->checkmates++;
             //print_board(&temp_board);
+        }
+        if (cand->move.piece == KING && cand->move.color == WHITE)
+        {
+            if ((cand->move.src & 0x8ULL) && (cand->move.dest & 0x22ULL))
+            {
+                //print_board(&temp_board);
+            }
+        }
+        if (cand->move.piece == KING && cand->move.color == BLACK)
+        {
+            if ((cand->move.src & (0x8ULL << 56)) && (cand->move.dest &
+                        (0x22ULL << 56)))
+            {
+                //print_board(&temp_board);
+            }
         }
 
         return;

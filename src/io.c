@@ -10,7 +10,34 @@ void print_location(uint64_t board)
     int square = 63 - bitScanForward(board);
     char s[20];
     sprintf(s, "%c%d", square%8+'a',8-square/8);
-    write(1, s, strlen(s));
+    if(write(1, s, strlen(s)) == -1)
+        perror("from print_location");
+}
+
+void print_move(Move* move)
+{
+    print_location(move->src);
+    print_location(move->dest);
+    if (move->promote == BISHOP)
+    {
+        if(write(1, "b", 1) == -1)
+            perror("from find_best_move");
+    }
+    else if (move->promote == KNIGHT)
+    {
+        if(write(1, "n", 1) == -1)
+            perror("from find_best_move");
+    }
+    else if (move->promote == ROOK)
+    {
+        if(write(1, "r", 1) == -1)
+            perror("from find_best_move");
+    }
+    else if (move->promote == QUEEN)
+    {
+        if(write(1, "q", 1) == -1)
+            perror("from find_best_move");
+    }
 }
 
 void print_board(Board* board)

@@ -51,6 +51,7 @@ typedef struct
     uint64_t dest;
     int piece;
     int color;
+    int promote;
 } Move;
 
 typedef struct
@@ -66,6 +67,8 @@ typedef struct
     uint64_t eps;
     uint64_t checks;
     uint64_t checkmates;
+    uint64_t castles;
+    uint64_t proms;
 } Pres;
 
 extern const uint64_t RDIAG;
@@ -78,6 +81,9 @@ extern const uint64_t KMOV;
 extern const uint64_t PATTK;
 
 extern const Move default_move;
+
+#define LINE_LENGTH 20
+extern Move current_line[LINE_LENGTH];
  
 void set_default(Board* board);
 void move_piece(Board* board, Move* move);
