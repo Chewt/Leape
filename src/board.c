@@ -728,7 +728,7 @@ int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth)
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
     if(is_checkmate(&temp_board, temp_board.to_move))
-        return -300;
+        return (-300 - depth);
     if (!depth)
         return get_board_value(&temp_board);
     Cand cans[MOVES_PER_POSITION];
@@ -752,7 +752,7 @@ int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth)
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
     if(is_checkmate(&temp_board, temp_board.to_move))
-        return 300;
+        return (300 + depth);
     if (!depth)
         return -get_board_value(&temp_board);
     Cand cans[MOVES_PER_POSITION];
