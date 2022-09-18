@@ -62,76 +62,119 @@ int main()
                 load_fen(&board, token);
             }
             if (token && !strcmp(token, "startpos"))
+            {
                 set_default(&board);
+            }
+            token = strtok_r(NULL, " ", &saveptr);
+            if (token && !strcmp(token, "moves"))
+            {
+                token = strtok_r(NULL, " ", &saveptr);
+                while (token)
+                {
+                    Move move;
+                    move.src = square_to_bit(token);
+                    move.dest = square_to_bit(token + 2);
+                    find_piece(&board, &move);
+                    move.promote = -1;
+                    if (token[4] != '\n')
+                    {
+                        switch (token[4])
+                        {
+                            case 'b':
+                                move.promote = BISHOP;
+                                break;
+                            case 'n':
+                                move.promote = KNIGHT;
+                                break;
+                            case 'r':
+                                move.promote = ROOK;
+                                break;
+                            case 'q':
+                                move.promote = QUEEN;
+                                break;
+                        }
+                    }
+                    move_piece(&board, &move);
+                    token = strtok_r(NULL, " ", &saveptr);
+                }
+            }
         }
         else if (!strcmp(token, "go"))
         {
             token = strtok_r(NULL, " ", &saveptr);
-            if (token && !strcmp(token, "depth"))
+            while (token)
             {
+                if (token && !strcmp(token, "depth"))
+                {
+                    token = strtok_r(NULL, " ", &saveptr);
+
+                    /*
+                       if (is_stalemate(&board, board.to_move))
+                       printf("Is stalemate!\n");
+                       else
+                       printf("Is not stalemate!\n");
+                       if (is_checkmate(&board, board.to_move))
+                       printf("Is checkmate!\n");
+                       else
+                       printf("Is not checkmate!\n");
+                    //print_board(&board);
+
+                    Board b;
+                    memset(&b, 0, sizeof(Board));
+                    b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
+                    print_board(&b);
+                    */
+
+                    struct timeval timecheck;
+                    long t;
+                    gettimeofday(&timecheck, NULL);
+                    t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec /
+                        1000;
+                    Move bestmove = find_best_move(&board, atoi(token));
+                    gettimeofday(&timecheck, NULL);
+                    t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
+                    double time_taken = (double)t / 1000;
+                    char s[100];
+                    sprintf(s, "Time taken: %.6f seconds\n", time_taken);
+                    if(write(2, s, strlen(s)) == -1)
+                        perror("from main");
+                    if(write(1, "bestmove ", 9) == -1)
+                        perror("from main");
+                    print_location(1, bestmove.src);
+                    print_location(1, bestmove.dest);
+                    if (bestmove.promote == BISHOP)
+                    {
+                        if(write(1, "b", 1) == -1)
+                            perror("from main");
+                    }
+                    else if (bestmove.promote == KNIGHT)
+                    {
+                        if(write(1, "n", 1) == -1)
+                            perror("from main");
+                    }
+                    else if (bestmove.promote == ROOK)
+                    {
+                        if(write(1, "r", 1) == -1)
+                            perror("from main");
+                    }
+                    else if (bestmove.promote == QUEEN)
+                    {
+                        if(write(1, "q", 1) == -1)
+                            perror("from main");
+                    }
+                    if(write(1, "\n", 1) == -1)
+                        perror("from main");
+                }
                 token = strtok_r(NULL, " ", &saveptr);
-
-                /*
-                if (is_stalemate(&board, board.to_move))
-                    printf("Is stalemate!\n");
-                else
-                    printf("Is not stalemate!\n");
-                if (is_checkmate(&board, board.to_move))
-                    printf("Is checkmate!\n");
-                else
-                    printf("Is not checkmate!\n");
-                //print_board(&board);
-
-                Board b;
-                memset(&b, 0, sizeof(Board));
-                b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
-                print_board(&b);
-                */
-
-                struct timeval timecheck;
-                long t;
-                gettimeofday(&timecheck, NULL);
-                t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec /
-                    1000;
-                Move bestmove = find_best_move(&board, atoi(token));
-                gettimeofday(&timecheck, NULL);
-                t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
-                double time_taken = (double)t / 1000;
-                char s[100];
-                sprintf(s, "Time taken: %.6f seconds\n", time_taken);
-                if(write(1, s, strlen(s)) == -1)
-                    perror("from main");
-                if(write(1, "bestmove ", 9) == -1)
-                    perror("from main");
-                print_location(bestmove.src);
-                print_location(bestmove.dest);
-                if (bestmove.promote == BISHOP)
-                {
-                    if(write(1, "b", 1) == -1)
-                        perror("from main");
-                }
-                else if (bestmove.promote == KNIGHT)
-                {
-                    if(write(1, "n", 1) == -1)
-                        perror("from main");
-                }
-                else if (bestmove.promote == ROOK)
-                {
-                    if(write(1, "r", 1) == -1)
-                        perror("from main");
-                }
-                else if (bestmove.promote == QUEEN)
-                {
-                    if(write(1, "q", 1) == -1)
-                        perror("from main");
-                }
-                if(write(1, "\n", 1) == -1)
-                    perror("from main");
             }
         }
         else if (!strcmp(token, "quit"))
         {
             running = 0;
+        }
+        else if (!strcmp(token, "printboard"))
+        {
+            print_board(&board);
         }
         else if (!strcmp(token, "perft"))
         {

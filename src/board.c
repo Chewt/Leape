@@ -1065,22 +1065,22 @@ Move find_best_move(Board* board, int depth)
             if (j == depth)
             {
                 //current_line[j] = cands[i].move;
-                print_move(&cands[i].move);
+                print_move(2, &cands[i].move);
                 char s[100];
                 sprintf(s, " weight: %d ", cands[i].weight);
-                if(write(1, s, strlen(s)) == -1)
+                if(write(2, s, strlen(s)) == -1)
                     perror("from find_best_move");
                 int m;
                 for (m = LINE_LENGTH - 1; m >= 0; --m)
                 {
                     if (current_line[m].src)
                     {
-                        print_move(&current_line[m]);
-                        if(write(1, " ", 1) == -1)
+                        print_move(2, &current_line[m]);
+                        if(write(2, " ", 1) == -1)
                             perror("from find_best_move");
                     }
                 }
-                if(write(1, "\n", 1) == -1)
+                if(write(2, "\n", 1) == -1)
                     perror("from find_best_move");
                 memset(current_line, 0, sizeof(Move) * LINE_LENGTH);
                 if (cands[i].weight > bestmove.weight)

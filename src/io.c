@@ -5,37 +5,61 @@
 #include "board.h"
 #include "io.h"
 
-void print_location(uint64_t board)
+uint64_t square_to_bit(char* square)
+{
+    uint64_t new = 0x1ULL;
+    new <<= (7 - (square[0] - 'a'));
+    new <<= (8 * (square[1] - '1'));
+    return new;
+}
+
+void find_piece(Board* board, Move* move)
+{
+    int i;
+    for (i = 0; i < 12; ++i)
+    {
+        if (board->pieces[i] & move->src)
+        {
+            move->piece = i % 6;
+            if (i > 5)
+                move->color = BLACK;
+            else
+                move->color = WHITE;
+        }
+    }
+}
+
+void print_location(int fd, uint64_t board)
 {
     int square = 63 - bitScanForward(board);
     char s[20];
     sprintf(s, "%c%d", square%8+'a',8-square/8);
-    if(write(1, s, strlen(s)) == -1)
+    if(write(fd, s, strlen(s)) == -1)
         perror("from print_location");
 }
 
-void print_move(Move* move)
+void print_move(int fd, Move* move)
 {
-    print_location(move->src);
-    print_location(move->dest);
+    print_location(fd, move->src);
+    print_location(fd, move->dest);
     if (move->promote == BISHOP)
     {
-        if(write(1, "b", 1) == -1)
+        if(write(fd, "b", 1) == -1)
             perror("from find_best_move");
     }
     else if (move->promote == KNIGHT)
     {
-        if(write(1, "n", 1) == -1)
+        if(write(fd, "n", 1) == -1)
             perror("from find_best_move");
     }
     else if (move->promote == ROOK)
     {
-        if(write(1, "r", 1) == -1)
+        if(write(fd, "r", 1) == -1)
             perror("from find_best_move");
     }
     else if (move->promote == QUEEN)
     {
-        if(write(1, "q", 1) == -1)
+        if(write(fd, "q", 1) == -1)
             perror("from find_best_move");
     }
 }
