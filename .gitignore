@@ -7,3 +7,5 @@ tags
 leape
 **/*.swp
 .gdb_history
+.ccls
+.ccls-cache/
