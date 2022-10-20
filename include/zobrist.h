@@ -1,6 +1,8 @@
 #ifndef ZOBRIST_H
 #define ZOBRIST_H
 
+#include "board.h"
+
 #define RANDOM_SIZE 781
 #define HASH_SIZE 0xFFFFFFFFFFFFFFFFULL
 #define TABLE_SIZE (0xFFFFFFF) 

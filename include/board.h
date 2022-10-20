@@ -89,6 +89,8 @@ void set_default(Board* board);
 void move_piece(Board* board, Move* move);
 void undo_move(Board* board, Move* move);
 void update_combined_pos(Board* board);
+void add_position(Board* board);
+int is_threefold(Board* board);
 
 uint64_t gen_pawn_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_bishop_moves(Board* board, int color, uint64_t pieces);

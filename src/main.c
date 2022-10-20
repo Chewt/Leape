@@ -95,6 +95,7 @@ int main()
                         }
                     }
                     move_piece(&board, &move);
+                    add_position(&board);
                     token = strtok_r(NULL, " ", &saveptr);
                 }
             }

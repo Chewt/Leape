@@ -24,7 +24,9 @@ void zobrist_clear()
 int is_hashed(Board* board)
 {
     if (zobrist_hash[board->hash % TABLE_SIZE] != DEFUALT_VALUE)
+    {
         return 1;
+    }
     return 0;
 }
 

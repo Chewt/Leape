@@ -6,6 +6,7 @@
 #include "io.h"
 #include "zobrist.h"
 
+char* position_hashes = NULL;
 
 /* Constants for piece attacks */
 const uint64_t RDIAG = 0x0102040810204080ULL;
@@ -99,6 +100,9 @@ uint64_t vert_mask(int count)
  ******************************************************************************/
 void set_default(Board* board)
 {
+    if (position_hashes)
+        free(position_hashes);
+    position_hashes = calloc(TABLE_SIZE, sizeof(char));
     memset(board, 0, sizeof(Board));
     board->pieces[WHITE + PAWN]   = 0x000000000000FF00ULL;
     board->pieces[WHITE + BISHOP] = 0x0000000000000024ULL;
@@ -727,6 +731,21 @@ int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth)
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
+    if (is_threefold(&temp_board))
+        return 0;
+    if (is_hashed(&temp_board))
+    {
+        //printf("Hashed\n");
+        return get_hashed_value(&temp_board);
+    }
+    if (is_stalemate(&temp_board, temp_board.to_move))
+        return 0;
+    if (depth == 0)
+    {
+        int bv = get_board_value(&temp_board);
+        set_hashed_value(&temp_board, bv);
+        //current_line[0] = cand->move;
+    }
     if(is_checkmate(&temp_board, temp_board.to_move))
         return (-300 - depth);
     if (!depth)
@@ -751,6 +770,20 @@ int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth)
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
+    if (is_threefold(&temp_board))
+        return 0;
+    if (is_hashed(&temp_board))
+    {
+        //printf("Hashed\n");
+        return -get_hashed_value(&temp_board);
+    }
+    if (is_stalemate(&temp_board, temp_board.to_move))
+        return 0;
+    if (depth == 0)
+    {
+        int bv = get_board_value(&temp_board);
+        set_hashed_value(&temp_board, bv);
+    }
     if(is_checkmate(&temp_board, temp_board.to_move))
         return (300 + depth);
     if (!depth)
@@ -788,6 +821,8 @@ int eval_prune(Board* board, Cand* cand, int alpha, int beta, int depth)
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
+    if (is_threefold(&temp_board))
+        return 0;
     if (is_hashed(&temp_board))
         return get_hashed_value(&temp_board);
     if (is_stalemate(&temp_board, temp_board.to_move))
@@ -1423,4 +1458,19 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
             break;
         get_nodes(&temp_board, &(cans[i]), depth - 1, pres);
     }
+}
+
+void add_position(Board* board)
+{
+    position_hashes[board->hash % TABLE_SIZE]++;
+}
+
+int is_threefold(Board* board)
+{
+    if (position_hashes[board->hash % TABLE_SIZE] >= 3)
+    {
+        //printf("Found a match!\n");
+        return 1;
+    }
+    return 0;
 }
