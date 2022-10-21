@@ -732,7 +732,7 @@ int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth, int s
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
     if (is_threefold(&temp_board))
-        return 0;
+        return -5;
     if (is_hashed(&temp_board, depth))
     {
         return get_hashed_value(&temp_board);
@@ -768,7 +768,7 @@ int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth, int s
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
     if (is_threefold(&temp_board))
-        return 0;
+        return -5;
     if (is_hashed(&temp_board, depth))
     {
         return get_hashed_value(&temp_board);
