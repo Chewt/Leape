@@ -735,21 +735,18 @@ int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth)
         return 0;
     if (is_hashed(&temp_board))
     {
-        //printf("Hashed\n");
         return get_hashed_value(&temp_board);
     }
     if (is_stalemate(&temp_board, temp_board.to_move))
         return 0;
-    if (depth == 0)
-    {
-        int bv = get_board_value(&temp_board);
-        set_hashed_value(&temp_board, bv);
-        //current_line[0] = cand->move;
-    }
     if(is_checkmate(&temp_board, temp_board.to_move))
         return (-300 - depth);
     if (!depth)
+    {
+        int bv = get_board_value(&temp_board);
+        set_hashed_value(&temp_board, bv);
         return get_board_value(&temp_board);
+    }
     Cand cans[MOVES_PER_POSITION];
     int num_moves = gen_all_moves(&temp_board, cans);
     int i;
@@ -774,20 +771,18 @@ int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth)
         return 0;
     if (is_hashed(&temp_board))
     {
-        //printf("Hashed\n");
-        return -get_hashed_value(&temp_board);
+        return get_hashed_value(&temp_board);
     }
     if (is_stalemate(&temp_board, temp_board.to_move))
         return 0;
-    if (depth == 0)
-    {
-        int bv = get_board_value(&temp_board);
-        set_hashed_value(&temp_board, bv);
-    }
     if(is_checkmate(&temp_board, temp_board.to_move))
         return (300 + depth);
     if (!depth)
-        return -get_board_value(&temp_board);
+    {
+        int bv = get_board_value(&temp_board);
+        set_hashed_value(&temp_board, bv);
+        return bv;
+    }
     Cand cans[MOVES_PER_POSITION];
     int num_moves = gen_all_moves(&temp_board, cans);
     int i;
@@ -1090,12 +1085,10 @@ Move find_best_move(Board* board, int depth)
             //int temp_weight = eval_prune(board, &cands[i], -300, 300, j - 1);
             //int temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
             int temp_weight = 0;
-            //if (board->to_move == BLACK)
-                temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
+            //if (board->to_move == WHITE)
+                //temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
             //else 
-             //   temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
-            //if (board->to_move == BLACK)
-                //temp_weight *= -1;
+                temp_weight = -alphaBetaMax(board, &cands[i], -300, 300, j - 1);
             cands[i].weight = temp_weight;
             if (j == depth)
             {

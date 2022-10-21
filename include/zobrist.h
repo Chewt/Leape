@@ -15,6 +15,13 @@
 #define QB_CASTLE (64 * 12 + 4)
 #define EN_P_BEGIN (64 * 12 + 5)
 
+typedef struct
+{
+    uint64_t hash;
+    uint8_t depth;
+    int score;
+} TEntry;
+
 void zobrist_init();
 void zobrist_clear();
 int is_hashed(Board* board);

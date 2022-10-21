@@ -4,11 +4,14 @@
 #include "zobrist.h"
 
 uint64_t random_nums[RANDOM_SIZE];
-int zobrist_hash[TABLE_SIZE];
+TEntry* zobrist_hash = NULL;
 
 void zobrist_init()
 {
     uint64_t i;
+    if (zobrist_hash)
+        free(zobrist_hash);
+    zobrist_hash = calloc(sizeof(TEntry), TABLE_SIZE);
     for (i = 0; i < RANDOM_SIZE; ++i)
         random_nums[i] = rand() % HASH_SIZE;
     zobrist_clear();
@@ -18,12 +21,12 @@ void zobrist_clear()
 {
     uint64_t i;
     for (i = 0; i < TABLE_SIZE; ++i)
-        zobrist_hash[i] = DEFUALT_VALUE;
+        zobrist_hash[i].hash = DEFUALT_VALUE;
 }
 
 int is_hashed(Board* board)
 {
-    if (zobrist_hash[board->hash % TABLE_SIZE] != DEFUALT_VALUE)
+    if (zobrist_hash[board->hash % TABLE_SIZE].hash == board->hash)
     {
         return 1;
     }
@@ -32,12 +35,12 @@ int is_hashed(Board* board)
 
 int get_hashed_value(Board* board)
 {
-    return zobrist_hash[board->hash % TABLE_SIZE];
+    return zobrist_hash[board->hash % TABLE_SIZE].score;
 }
 
 void set_hashed_value(Board* board, int val)
 {
-    zobrist_hash[board->hash % TABLE_SIZE] = val;
+    zobrist_hash[board->hash % TABLE_SIZE].score = val;
 }
 
 uint64_t hash_position(Board* board)
