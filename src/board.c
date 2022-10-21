@@ -1088,7 +1088,8 @@ Move find_best_move(Board* board, int depth)
             //if (board->to_move == WHITE)
                 //temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
             //else 
-                temp_weight = -alphaBetaMax(board, &cands[i], -300, 300, j - 1, j);
+                temp_weight = -alphaBetaMax(board, &cands[i], -300, 300, j - 1,
+                        j - 1);
             cands[i].weight = temp_weight;
             if (j == depth)
             {
