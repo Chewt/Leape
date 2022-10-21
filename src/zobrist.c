@@ -24,11 +24,12 @@ void zobrist_clear()
         zobrist_hash[i].hash = DEFUALT_VALUE;
 }
 
-int is_hashed(Board* board)
+int is_hashed(Board* board, int depth)
 {
     if (zobrist_hash[board->hash % TABLE_SIZE].hash == board->hash)
     {
-        return 1;
+        if (depth <= zobrist_hash[board->hash % TABLE_SIZE].depth)
+            return 1;
     }
     return 0;
 }
@@ -38,9 +39,10 @@ int get_hashed_value(Board* board)
     return zobrist_hash[board->hash % TABLE_SIZE].score;
 }
 
-void set_hashed_value(Board* board, int val)
+void set_hashed_value(Board* board, int val, int depth)
 {
     zobrist_hash[board->hash % TABLE_SIZE].score = val;
+    zobrist_hash[board->hash % TABLE_SIZE].depth = depth;
 }
 
 uint64_t hash_position(Board* board)

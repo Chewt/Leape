@@ -24,10 +24,10 @@ typedef struct
 
 void zobrist_init();
 void zobrist_clear();
-int is_hashed(Board* board);
+int is_hashed(Board* board, int depth);
 int get_hashed_value(Board* board);
 uint64_t hash_position(Board* board);
-void set_hashed_value(Board* board, int val);
+void set_hashed_value(Board* board, int val, int depth);
 void update_hash_move(Board* board, Move* move);
 void update_hash_direct(Board* board, int ind);
 
