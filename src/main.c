@@ -64,6 +64,7 @@ int main()
             if (token && !strcmp(token, "startpos"))
             {
                 set_default(&board);
+                add_position(&board);
             }
             token = strtok_r(NULL, " ", &saveptr);
             if (token && !strcmp(token, "moves"))

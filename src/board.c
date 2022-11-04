@@ -121,6 +121,7 @@ void set_default(Board* board)
     board->to_move                = WHITE;
     update_combined_pos(board);
     board->hash = hash_position(board);
+    add_position(board);
     memset(current_line, 0, sizeof(Move) * LINE_LENGTH);
 }
 
@@ -732,7 +733,7 @@ int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth, int s
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
     if (is_threefold(&temp_board))
-        return -5;
+        return 5;
     if (is_hashed(&temp_board, depth))
     {
         return get_hashed_value(&temp_board);
@@ -1461,7 +1462,7 @@ void add_position(Board* board)
 
 int is_threefold(Board* board)
 {
-    if (position_hashes[board->hash % TABLE_SIZE] >= 3)
+    if (position_hashes[board->hash % TABLE_SIZE] >= 2)
     {
         //printf("Found a match!\n");
         return 1;
