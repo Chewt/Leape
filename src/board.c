@@ -726,26 +726,43 @@ int gen_all_moves(Board* board, Cand* movearr)
     return nmoves;
 }
 
+void remove_position(Board* board)
+{
+    position_hashes[board->hash % TABLE_SIZE]--;
+}
+
 int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth, int startDepth);
 int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth, int startDepth)
 {
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
+    add_position(&temp_board);
     if (is_threefold(&temp_board))
+    {
+        remove_position(&temp_board);
         return 5;
+    }
     if (is_hashed(&temp_board, depth))
     {
+        remove_position(&temp_board);
         return get_hashed_value(&temp_board);
     }
     if (is_stalemate(&temp_board, temp_board.to_move))
-        return 0;
+    {
+        remove_position(&temp_board);
+        return 5;
+    }
     if(is_checkmate(&temp_board, temp_board.to_move))
+    {
+        remove_position(&temp_board);
         return (-300 - depth);
+    }
     if (!depth)
     {
         int bv = get_board_value(&temp_board);
         set_hashed_value(&temp_board, bv, startDepth);
+        remove_position(&temp_board);
         return get_board_value(&temp_board);
     }
     Cand cans[MOVES_PER_POSITION];
@@ -756,10 +773,14 @@ int alphaBetaMax(Board* board, Cand* cand, int alpha, int beta, int depth, int s
     {
         score = alphaBetaMin(&temp_board, &cans[i], alpha, beta, depth - 1, startDepth);
         if (score >= beta)
+        {
+            remove_position(&temp_board);
             return beta;
+        }
         if (score > alpha)
             alpha = score;
     }
+    remove_position(&temp_board);
     return alpha;
 }
 
@@ -768,20 +789,32 @@ int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth, int s
     Board temp_board;
     memcpy(&temp_board, board, sizeof(Board));
     move_piece(&temp_board, &cand->move);
+    add_position(&temp_board);
     if (is_threefold(&temp_board))
+    {
+        remove_position(&temp_board);
         return -5;
+    }
     if (is_hashed(&temp_board, depth))
     {
+        remove_position(&temp_board);
         return get_hashed_value(&temp_board);
     }
     if (is_stalemate(&temp_board, temp_board.to_move))
+    {
+        remove_position(&temp_board);
         return 0;
+    }
     if(is_checkmate(&temp_board, temp_board.to_move))
+    {
+        remove_position(&temp_board);
         return (300 + depth);
+    }
     if (!depth)
     {
         int bv = get_board_value(&temp_board);
         set_hashed_value(&temp_board, bv, startDepth);
+        remove_position(&temp_board);
         return bv;
     }
     Cand cans[MOVES_PER_POSITION];
@@ -792,10 +825,14 @@ int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth, int s
     {
         score = alphaBetaMax(&temp_board, &cans[i], alpha, beta, depth - 1, startDepth);
         if (score <= alpha)
+        {
+            remove_position(&temp_board);
             return alpha;
+        }
         if (score < beta)
             beta = score;
     }
+    remove_position(&temp_board);
     return beta;
 }
 
