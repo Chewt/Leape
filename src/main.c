@@ -126,7 +126,7 @@ int main()
                 }
                 token = strtok_r(NULL, " ", &saveptr);
             }
-            printf("depth: %d, wtime: %d, btime: %d\n", depth, wtime, btime);
+            //printf("depth: %d, wtime: %d, btime: %d\n", depth, wtime, btime);
             int time_left = btime;
             if (board.to_move == WHITE)
                 time_left = wtime;
