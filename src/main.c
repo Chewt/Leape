@@ -103,72 +103,73 @@ int main()
         }
         else if (!strcmp(token, "go"))
         {
+            int depth = -1;
+            int wtime = -1;
+            int btime = -1;
             token = strtok_r(NULL, " ", &saveptr);
             while (token)
             {
-                if (token && !strcmp(token, "depth"))
+                if (!strcmp(token, "depth"))
                 {
                     token = strtok_r(NULL, " ", &saveptr);
-
-                    /*
-                       if (is_stalemate(&board, board.to_move))
-                       printf("Is stalemate!\n");
-                       else
-                       printf("Is not stalemate!\n");
-                       if (is_checkmate(&board, board.to_move))
-                       printf("Is checkmate!\n");
-                       else
-                       printf("Is not checkmate!\n");
-                    //print_board(&board);
-
-                    Board b;
-                    memset(&b, 0, sizeof(Board));
-                    b.pieces[WHITE + PAWN] = gen_pawn_moves(&board, BLACK, board.pieces[BLACK + PAWN]);
-                    print_board(&b);
-                    */
-
-                    struct timeval timecheck;
-                    long t;
-                    gettimeofday(&timecheck, NULL);
-                    t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec /
-                        1000;
-                    Move bestmove = find_best_move(&board, atoi(token));
-                    gettimeofday(&timecheck, NULL);
-                    t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
-                    double time_taken = (double)t / 1000;
-                    char s[100];
-                    sprintf(s, "Time taken: %.6f seconds\n", time_taken);
-                    if(write(2, s, strlen(s)) == -1)
-                        perror("from main");
-                    if(write(1, "bestmove ", 9) == -1)
-                        perror("from main");
-                    print_location(1, bestmove.src);
-                    print_location(1, bestmove.dest);
-                    if (bestmove.promote == BISHOP)
-                    {
-                        if(write(1, "b", 1) == -1)
-                            perror("from main");
-                    }
-                    else if (bestmove.promote == KNIGHT)
-                    {
-                        if(write(1, "n", 1) == -1)
-                            perror("from main");
-                    }
-                    else if (bestmove.promote == ROOK)
-                    {
-                        if(write(1, "r", 1) == -1)
-                            perror("from main");
-                    }
-                    else if (bestmove.promote == QUEEN)
-                    {
-                        if(write(1, "q", 1) == -1)
-                            perror("from main");
-                    }
-                    if(write(1, "\n", 1) == -1)
-                        perror("from main");
+                    depth = atoi(token);
+                }
+                else if (!strcmp(token, "wtime"))
+                {
+                    token = strtok_r(NULL, " ", &saveptr);
+                    wtime = atoi(token);
+                }
+                else if (!strcmp(token, "btime"))
+                {
+                    token = strtok_r(NULL, " ", &saveptr);
+                    btime = atoi(token);
                 }
                 token = strtok_r(NULL, " ", &saveptr);
             }
+            printf("depth: %d, wtime: %d, btime: %d\n", depth, wtime, btime);
+            int time_left = btime;
+            if (board.to_move == WHITE)
+                time_left = wtime;
+
+            struct timeval timecheck;
+            long t;
+            gettimeofday(&timecheck, NULL);
+            t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec /
+                1000;
+            Move bestmove = find_best_move(&board, depth, time_left);
+            gettimeofday(&timecheck, NULL);
+            t = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000 - t;
+            double time_taken = (double)t / 1000;
+            char s[100];
+            sprintf(s, "Time taken: %.6f seconds\n", time_taken);
+            if(write(2, s, strlen(s)) == -1)
+                perror("from main");
+            if(write(1, "bestmove ", 9) == -1)
+                perror("from main");
+            print_location(1, bestmove.src);
+            print_location(1, bestmove.dest);
+            if (bestmove.promote == BISHOP)
+            {
+                if(write(1, "b", 1) == -1)
+                    perror("from main");
+            }
+            else if (bestmove.promote == KNIGHT)
+            {
+                if(write(1, "n", 1) == -1)
+                    perror("from main");
+            }
+            else if (bestmove.promote == ROOK)
+            {
+                if(write(1, "r", 1) == -1)
+                    perror("from main");
+            }
+            else if (bestmove.promote == QUEEN)
+            {
+                if(write(1, "q", 1) == -1)
+                    perror("from main");
+            }
+            if(write(1, "\n", 1) == -1)
+                perror("from main");
         }
         else if (!strcmp(token, "quit"))
         {

@@ -1103,9 +1103,12 @@ int is_legal(Board* board, Move move)
  *
  * @param board The board to search for the best move
  * @param depth The depth at which to search the board
+ * @param time  The time left on the clock in msec
  ******************************************************************************/
-Move find_best_move(Board* board, int depth)
+Move find_best_move(Board* board, int depth, int time)
 {
+    if (time < 60000 && time >= 0)
+        depth--;
     Cand cands[MOVES_PER_POSITION];
     int num_moves = gen_all_moves(board, cands);
     qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);

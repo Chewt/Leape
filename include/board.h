@@ -100,7 +100,7 @@ uint64_t gen_knight_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_king_moves(Board* board, int color, uint64_t pieces);
 uint64_t gen_all_attacks(Board* board, int color);
 
-Move find_best_move(Board* board, int depth);
+Move find_best_move(Board* board, int depth, int time);
 int get_board_value(Board* board);
 int extract_moves(Board* board, int color, uint64_t src, Cand* movearr);
 int is_legal(Board* board, Move move);
