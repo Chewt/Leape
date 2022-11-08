@@ -687,7 +687,7 @@ void update_combined_pos(Board* board)
  * @param color The color of the side you wish to generate the moves from
  * @return The bitboard containing the attacks
  ******************************************************************************/
-uint64_t gen_all_attacks(Board* board, int color)
+uint64_t gen_all_dests(Board* board, int color)
 {
     uint64_t moves = EMPTY;
     moves |= gen_pawn_moves(board, color, board->pieces[color + PAWN]);
@@ -726,9 +726,125 @@ int gen_all_moves(Board* board, Cand* movearr)
     return nmoves;
 }
 
+/*******************************************************************************
+ * Populates an array with all possible moves on the current board that attack
+ * an enemy piece. It will only generate moves for the side that is indicated by
+ * the Board attribute to_move
+ *
+ * @param board The board to generate moves from
+ * @param movearr The array of moves to populate with the created moves. Its
+ *                length will always be of the constant MOVES_PER_POSITION
+ ******************************************************************************/
+int gen_all_attack_moves(Board* board, Cand* movearr)
+{
+    memset(movearr, 0, sizeof(Cand) * MOVES_PER_POSITION);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(board, cans);
+    uint64_t pieces;
+    if (board->to_move == WHITE)
+        pieces = board->all_black;
+    else
+        pieces = board->all_white;
+    int num_attacks, i;
+    num_attacks = 0;
+    for (i = 0; i < num_moves; ++i) {
+        if (cans[i].move.dest & pieces)
+        {
+            memcpy(movearr + num_attacks, cans + i, sizeof(Cand));
+            num_attacks++;
+        }
+    }
+    return num_attacks;
+}
+
+/*******************************************************************************
+ * Populates an array with all possible moves on the current board that attack
+ * an specific square. It will only generate moves for the side that is indicated
+ * by the Board attribute to_move
+ *
+ * @param board   The board to generate moves from
+ * @param movearr The array of moves to populate with the created moves. Its
+ *                length will always be of the constant MOVES_PER_POSITION
+ * @param square  The target square to find moves for
+ ******************************************************************************/
+int gen_all_attacks_on_square(Board* board, Cand* movearr, uint64_t square)
+{
+    memset(movearr, 0, sizeof(Cand) * MOVES_PER_POSITION);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_moves(board, cans);
+    int num_attacks, i;
+    num_attacks = 0;
+    for (i = 0; i < num_moves; ++i) {
+        if (cans[i].move.dest & square)
+        {
+            memcpy(movearr + num_attacks, cans + i, sizeof(Cand));
+            num_attacks++;
+        }
+    }
+    return num_attacks;
+}
+
 void remove_position(Board* board)
 {
     position_hashes[board->hash % TABLE_SIZE]--;
+}
+int alphaBetaMin_attack(Board* board, Cand* cand, int alpha, int beta, int depth);
+int alphaBetaMax_attack(Board* board, Cand* cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand->move);
+    if (is_stalemate(&temp_board, temp_board.to_move))
+        return 5;
+    if(is_checkmate(&temp_board, temp_board.to_move))
+        return (-300 + depth);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_attacks_on_square(&temp_board, cans, cand->move.dest);
+    if (!num_moves)
+    {
+        int bv = get_board_value(&temp_board);
+        return get_board_value(&temp_board);
+    }
+    int i;
+    int score;
+    for (i = 0; i < num_moves; ++i)
+    {
+        score = alphaBetaMin_attack(&temp_board, &cans[i], alpha, beta, depth + 1);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    return alpha;
+}
+
+int alphaBetaMin_attack(Board* board, Cand* cand, int alpha, int beta, int depth)
+{
+    Board temp_board;
+    memcpy(&temp_board, board, sizeof(Board));
+    move_piece(&temp_board, &cand->move);
+    if (is_stalemate(&temp_board, temp_board.to_move))
+        return -5;
+    if(is_checkmate(&temp_board, temp_board.to_move))
+        return (300 - depth);
+    Cand cans[MOVES_PER_POSITION];
+    int num_moves = gen_all_attacks_on_square(&temp_board, cans, cand->move.dest);
+    if (!num_moves)
+    {
+        int bv = get_board_value(&temp_board);
+        return bv;
+    }
+    int i;
+    int score;
+    for (i = 0; i < num_moves; ++i)
+    {
+        score = alphaBetaMax_attack(&temp_board, &cans[i], alpha, beta, depth + 1);
+        if (score <= alpha)
+            return alpha;
+        if (score < beta)
+            beta = score;
+    }
+    return beta;
 }
 
 int alphaBetaMin(Board* board, Cand* cand, int alpha, int beta, int depth, int startDepth);
@@ -1075,7 +1191,7 @@ int is_legal(Board* board, Move move)
     uint64_t all_attacks;
     if(board->to_move == WHITE)
     {
-        all_attacks = gen_all_attacks(&temp, BLACK);
+        all_attacks = gen_all_dests(&temp, BLACK);
         if (move.piece == KING && (0xEULL & all_attacks) && (move.dest &
                     (board->castle & 0xFULL)))
             return 0;
@@ -1086,7 +1202,7 @@ int is_legal(Board* board, Move move)
     }
     else
     {
-        all_attacks = gen_all_attacks(&temp, WHITE);
+        all_attacks = gen_all_dests(&temp, WHITE);
         if (move.piece == KING && ((0xEULL << 56) & all_attacks) &&
                 (move.dest & (board->castle & (0xFULL << 56))))
             return 0;
@@ -1107,15 +1223,41 @@ int is_legal(Board* board, Move move)
  ******************************************************************************/
 Move find_best_move(Board* board, int depth, int time)
 {
-    if (time < 60000 && time >= 0)
-        depth--;
     Cand cands[MOVES_PER_POSITION];
-    int num_moves = gen_all_moves(board, cands);
-    qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
     Cand bestmove;
     bestmove.weight = -9001;
-    int j;
+    int num_attack_moves = gen_all_attack_moves(board, cands);
     int i;
+    for (i = 0; i < num_attack_moves; ++i)
+    {
+        if (cands[i].move.src == EMPTY)
+            break;
+        int temp_weight = 0;
+        temp_weight = -alphaBetaMax_attack(board, &cands[i], -300, 300, 0);
+        cands[i].weight = temp_weight;
+        print_move(2, &cands[i].move);
+        char s[100];
+        sprintf(s, " attack weight: %d ", cands[i].weight);
+        if(write(2, s, strlen(s)) == -1)
+            perror("from find_best_move");
+        int m;
+        if(write(2, "\n", 1) == -1)
+            perror("from find_best_move");
+        if (cands[i].weight > bestmove.weight)
+            bestmove = cands[i];
+    }
+    int bv = get_board_value(board);
+    if (bv < 0)
+        bv *= -1;
+    if (bestmove.weight > bv)
+        return bestmove.move;
+
+    if (time < 60000 && time >= 0)
+        depth--;
+    int num_moves = gen_all_moves(board, cands);
+    qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
+    bestmove.weight = -9001;
+    int j;
     for (j = 1; j <= depth; ++j)
     {
         //zobrist_clear();
@@ -1127,10 +1269,10 @@ Move find_best_move(Board* board, int depth, int time)
             //int temp_weight = alphaBetaMax(board, &cands[i], -300, 300, j - 1);
             int temp_weight = 0;
             //if (board->to_move == WHITE)
-                //temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
+            //temp_weight = alphaBetaMin(board, &cands[i], -300, 300, j - 1);
             //else 
-                temp_weight = -alphaBetaMax(board, &cands[i], -300, 300, j - 1,
-                        j - 1);
+            temp_weight = -alphaBetaMax(board, &cands[i], -300, 300, j - 1,
+                    j - 1);
             cands[i].weight = temp_weight;
             if (j == depth)
             {
@@ -1193,10 +1335,10 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (will_be_check(board, WHITE, &cand->move))
             cand->weight += 1;
-        if (cand->move.dest & ~(gen_all_attacks(board, BLACK)))
+        if (cand->move.dest & ~(gen_all_dests(board, BLACK)))
             cand->weight += 3;
-//        if (will_be_checkmate(board, BLACK, &cand->move))
- //           cand->weight += 600;
+        //        if (will_be_checkmate(board, BLACK, &cand->move))
+        //           cand->weight += 600;
     }
     else
     {
@@ -1207,10 +1349,10 @@ void apply_heuristics(Board* board, Cand* cand)
             cand->weight += 1;
         if (will_be_check(board, BLACK, &cand->move))
             cand->weight += 1;
-        if (cand->move.dest & ~(gen_all_attacks(board, WHITE)))
+        if (cand->move.dest & ~(gen_all_dests(board, WHITE)))
             cand->weight += 3;
         //if (will_be_checkmate(board, WHITE, &cand->move))
-            //cand->weight += 600;
+        //cand->weight += 600;
     }
 }
 
@@ -1245,7 +1387,7 @@ int get_piece_value(Board* board, int color, uint64_t piece)
 int is_checkmate(Board* board, int color)
 {
     int ecolor = (color == BLACK) ? WHITE : BLACK;
-    if (!(board->pieces[KING + color] & gen_all_attacks(board, ecolor)))
+    if (!(board->pieces[KING + color] & gen_all_dests(board, ecolor)))
         return 0;
 
     int i;
@@ -1339,12 +1481,12 @@ int will_be_check(Board* board, int color, Move* move)
     move_piece(&temp, move);
     if (color == WHITE)
     {
-        if (board->pieces[BLACK + KING] & gen_all_attacks(&temp, WHITE))
+        if (board->pieces[BLACK + KING] & gen_all_dests(&temp, WHITE))
             return 1;
     }
     else
     {
-        if (board->pieces[WHITE + KING] & gen_all_attacks(&temp, BLACK))
+        if (board->pieces[WHITE + KING] & gen_all_dests(&temp, BLACK))
             return 1;
     }
     return 0;
@@ -1367,9 +1509,9 @@ int is_stalemate(Board* board, int color)
                 KING]);
         for (i = 0; i < 6; ++i)
             temp.pieces[i + BLACK] &= ~katt;
-        uint64_t all_attacks = gen_all_attacks(&temp, BLACK);
-        if (!(board->pieces[WHITE + KING] & gen_all_attacks(board, BLACK)))
-            if (!(gen_all_attacks(board, WHITE) & ~all_attacks))
+        uint64_t all_attacks = gen_all_dests(&temp, BLACK);
+        if (!(board->pieces[WHITE + KING] & gen_all_dests(board, BLACK)))
+            if (!(gen_all_dests(board, WHITE) & ~all_attacks))
                 return 1;
     }
     else if (color == BLACK)
@@ -1378,9 +1520,9 @@ int is_stalemate(Board* board, int color)
                 KING]);
         for (i = 0; i < 6; ++i)
             temp.pieces[i + WHITE] &= ~katt;
-        uint64_t all_attacks = gen_all_attacks(&temp, WHITE);
-        if (!(board->pieces[BLACK + KING] & gen_all_attacks(board, WHITE)))
-            if (!(gen_all_attacks(board, BLACK) & ~all_attacks))
+        uint64_t all_attacks = gen_all_dests(&temp, WHITE);
+        if (!(board->pieces[BLACK + KING] & gen_all_dests(board, WHITE)))
+            if (!(gen_all_dests(board, BLACK) & ~all_attacks))
                 return 1;
     }
     return 0;
@@ -1456,10 +1598,10 @@ void get_nodes(Board* board, Cand* cand, int depth, Pres* pres)
     if (depth == 0)
     {
         if (temp_board.to_move == BLACK && (temp_board.pieces[BLACK + KING] &
-                gen_all_attacks(&temp_board, WHITE)))
+                    gen_all_dests(&temp_board, WHITE)))
             pres->checks++;
         if (temp_board.to_move == WHITE && (temp_board.pieces[WHITE + KING] &
-                gen_all_attacks(&temp_board, BLACK)))
+                    gen_all_dests(&temp_board, BLACK)))
             pres->checks++;
         if (is_checkmate(&temp_board, temp_board.to_move))
         {
