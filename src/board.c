@@ -832,7 +832,7 @@ int alphaBetaMin_attack(Board* board, Cand* cand, int alpha, int beta, int depth
     if (!num_moves)
     {
         int bv = get_board_value(&temp_board);
-        return bv;
+        return -bv;
     }
     int i;
     int score;
@@ -1256,7 +1256,6 @@ Move find_best_move(Board* board, int depth, int time)
         depth--;
     int num_moves = gen_all_moves(board, cands);
     qsort(cands, MOVES_PER_POSITION, sizeof(Cand), comp_cand);
-    bestmove.weight = -9001;
     int j;
     for (j = 1; j <= depth; ++j)
     {
